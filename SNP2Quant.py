@@ -1,5 +1,6 @@
 import csv
 from _functions import csv2dict
+import _functions
 from sklearn import svm
 import numpy as np
 import sys,argparse
@@ -27,7 +28,7 @@ parser.add_argument('-rep1',
 
 parser.add_argument('-rep2',
                     dest='rep2',
-                    required = True,
+                    required = False,
                     help='output of SAM2SNP for replicate 2',
                     metavar = 'FILE',
                     
@@ -36,7 +37,7 @@ parser.add_argument('-rep2',
 
 parser.add_argument('-rep3',
                     dest='rep3',
-                    required = True,
+                    required = False,
                     help='output of SAM2SNP for replicate 3',
                     metavar = 'FILE',
                     
@@ -80,17 +81,41 @@ parser.add_argument('-gamma',
 
 args = parser.parse_args()
 
-with open('%s' %(args.rep1),'r') as in_raw, open('%s' %(args.rep2),'r') as in_2raw, open('%s' %(args.rep3),'r') as in_3raw, open('%s' %(args.out),'w') as out_raw, open('%s'%(args.gff),'r') as gff_raw:
-    infile = csv.reader(in_raw, delimiter = '\t')
-    infile2 = csv.reader(in_2raw, delimiter = '\t')
-    infile3 = csv.reader(in_3raw, delimiter = '\t')
+with open('%s' %(args.rep1),'r') as in_raw,  open('%s' %(args.out),'w') as out_raw, open('%s'%(args.gff),'r') as gff_raw:
     outfile = csv.writer(out_raw, delimiter = '\t')
     gfffile = csv.reader(gff_raw, delimiter = '\t')
 
-    # build dictionaries
+
+    # open the replicates , create dictionaries
+    infile = csv.reader(in_raw, delimiter = '\t')
     inDict = csv2dict(infile)
-    inDict2 = csv2dict(infile2)
-    inDict3 = csv2dict(infile3)
+    try:
+        open('%s' %(args.rep2),'r') as in_2raw
+        infile2 = csv.reader(in_2raw, delimiter = '\t')
+        inDict2 = csv2dict(infile2)
+    except:
+        inDict2 = 0
+        print '[OPEN] No replicate 2'
+        pass
+
+    try:
+        open('%s' %(args.rep3),'r') as in_3raw
+        infile3 = csv.reader(in_3raw, delimiter = '\t')
+        inDict3 = csv2dict(infile3)
+
+    except:
+        inDict3 = 0
+        print '[OPEN] No replicate 3'
+        pass
+    
+    print '[OPEN] All files loaded and ready'
+        
+    
+
+    # build dictionaries
+    
+    
+##    inDict3 = csv2dict(infile3)
 
     resDict = {}
     gffDict = {}
@@ -106,7 +131,7 @@ with open('%s' %(args.rep1),'r') as in_raw, open('%s' %(args.rep2),'r') as in_2r
     neg_count = 0
     pos_count = 0
     wrong_count = 0
-
+    origin = 'ENSEMBL'
     
 ##    for row in gfffile:
 ##        try:
@@ -116,23 +141,25 @@ with open('%s' %(args.rep1),'r') as in_raw, open('%s' %(args.rep2),'r') as in_2r
 ##            pass
         
     writevcfheader(writeout, outfile)
-    
-    for row in gfffile:
-##        print row
-        # skip header
-        if not '#' in row[0]:
-            try:
-                if row[2] == args.feature:
-                    if not origin =='ENSEMBL':
-                # legacy,  this has to be more flexible
-                        gffDict[row[0],row[8].split('"')[1]] = [row[3],row[4],row[6],row[2]]
-                    if origin == 'ENSEMBL':
-                        name = re.split('=|;',row[8])[2]
-                        gffDict[name] = [row[0]]
-            except:
-##                print 'wrong gff configuration in %s' %(row[0])
-                pass
-    print "gff file with %s features" %(len(gffDict))
+
+
+    gffDict = parse_gff(gfffile,origin)
+##    for row in gfffile:
+####        print row
+##        # skip header
+##        if not '#' in row[0]:
+##            try:
+##                if row[2] == args.feature:
+##                    if not origin =='ENSEMBL':
+##                # legacy,  this has to be more flexible
+##                        gffDict[row[0],row[8].split('"')[1]] = [row[3],row[4],row[6],row[2]]
+##                    if origin == 'ENSEMBL':
+##                        name = re.split('=|;',row[8])[2]
+##                        gffDict[name] = [row[0]]
+##            except:
+####                print 'wrong gff configuration in %s' %(row[0])
+##                pass
+##    print "gff file with %s features" %(len(gffDict))
 
     
 ##    print len(inDict), len(inDict2),len(inDict3)
@@ -140,15 +167,11 @@ with open('%s' %(args.rep1),'r') as in_raw, open('%s' %(args.rep2),'r') as in_2r
 
     # write the binning function
 
-    for f in [1..50]:
-        
-    def binning(inDict):
-        for element, value in inDict.items():
-            
-            
-            
-            
     
+    masterDict = populateMasterDict(inDict,inDict2,inDict3)        
+            
+    for repeat in range(0,20):
+        extendMasterDict(inDict1,inDict2,inDict3)
 
     
     count = 0    
@@ -201,7 +224,7 @@ with open('%s' %(args.rep1),'r') as in_raw, open('%s' %(args.rep2),'r') as in_2r
         noiseArray= np.vstack([noiseArray,value])
 
     # Predict the SVM for the noise data
-    print 'Predicting noise model'
+    print '[PREDICT] Predicting noise model'
 ##    noiseModel = svm.OneClassSVM(nu=0.01, kernel="rbf", gamma=0.0,verbose=True)
     noiseModel = svm.OneClassSVM(nu=(args.nu), kernel="rbf", gamma=(args.gamma),verbose=True)
     noiseModel.fit(noiseArray)

@@ -10,6 +10,7 @@ def parse_gff(gff_file, origin):
     """
     Parse a gff file,  extend this to encompass USCS /  SGD/CGD IDs  
     """
+    gffDict = {}
     for row in gff_file:
 ##        print row
         # skip header
@@ -452,7 +453,7 @@ def MaskAFasta (vcffile, record_dict, out_raw ):
         SeqIO.write(out_seqs, out_raw, "fasta")
             
 
-    
+
 def add2masterDict(indict, masterdict):
     """
     Extend the MasterDictionary to contain all possible SNPs
