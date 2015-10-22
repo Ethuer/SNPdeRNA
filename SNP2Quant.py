@@ -67,7 +67,7 @@ parser.add_argument('-nu',
                     
                     )
 
-parser.add_argument('-gamme',
+parser.add_argument('-gamma',
                     dest='gamma',
                     required = False,
                     default = '0.0',
@@ -108,20 +108,49 @@ with open('%s' %(args.rep1),'r') as in_raw, open('%s' %(args.rep2),'r') as in_2r
     wrong_count = 0
 
     
-    for row in gfffile:
-        try:
-            gene = row[8].split('"')[1]
-            gffDict[gene]=row[0]
-        except:
-            pass
+##    for row in gfffile:
+##        try:
+##            gene = row[8].split('"')[1]
+##            gffDict[gene]=row[0]
+##        except:
+##            pass
         
     writevcfheader(writeout, outfile)
     
-    
+    for row in gfffile:
+##        print row
+        # skip header
+        if not '#' in row[0]:
+            try:
+                if row[2] == args.feature:
+                    if not origin =='ENSEMBL':
+                # legacy,  this has to be more flexible
+                        gffDict[row[0],row[8].split('"')[1]] = [row[3],row[4],row[6],row[2]]
+                    if origin == 'ENSEMBL':
+                        name = re.split('=|;',row[8])[2]
+                        gffDict[name] = [row[0]]
+            except:
+##                print 'wrong gff configuration in %s' %(row[0])
+                pass
+    print "gff file with %s features" %(len(gffDict))
 
     
 ##    print len(inDict), len(inDict2),len(inDict3)
-##    make dictionary from csv reader objects 
+##    make dictionary from csv reader objects
+
+    # write the binning function
+
+    for f in [1..50]:
+        
+    def binning(inDict):
+        for element, value in inDict.items():
+            
+            
+            
+            
+    
+
+    
     count = 0    
     for element, value in inDict.items():
         

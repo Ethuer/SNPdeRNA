@@ -3,13 +3,39 @@ from Bio import SeqIO
 from scipy import stats
 import operator
 # Funtions for the RNAseq SNP expression 
+from Bio.Alphabet import IUPAC
+
+
+def parse_gff(gff_file, origin):
+    """
+    Parse a gff file,  extend this to encompass USCS /  SGD/CGD IDs  
+    """
+    for row in gff_file:
+##        print row
+        # skip header
+        if not '#' in row[0]:
+            try:
+                if row[2] == args.feature:
+                    if not origin =='ENSEMBL':
+                # legacy,  this has to be more flexible
+                        gffDict[row[0],row[8].split('"')[1]] = [row[3],row[4],row[6],row[2]]
+                    if origin == 'ENSEMBL':
+                        name = re.split('=|;',row[8])[2]
+                        gffDict[row[0],name] = [row[3],row[4],row[6],row[2]]
+            except:
+##                print 'wrong gff configuration in %s' %(row[0])
+                pass
+    return gffDict
+
+
+
 
 
 def writevcfheader(switch, outfile):
     """
     simple header in the same format as GATKs vcf files.
     """
-    if switch == True
+    if switch == True:
         outfile.writerow(["##fileformat=VCFv4.0"])
         outfile.writerow(["##fileDate="])
         outfile.writerow(["##reference="])
@@ -268,18 +294,18 @@ finding the second largest item
     return second_most_likely
 
 
-def getPercentage(number, total, feature):
-    percDict = {}
+def getPercentage(number, total, feature, percList):
     percent = ((float(number) / float(total))*100)
     
-    if percent % 10 < 0.02:
+    if percent % 10 < 1:
         
         if percent > 9:
             decadic_percent = round(percent,1)
-            if not decadic_percent in percDict:
-                print "%s percent of %ss analyzed " %(decadic_percent,feature)
-                percDict[decadic_percent] = 1
-
+            if not decadic_percent in percList:
+                
+                print "[STATUS] %s percent of %ss analyzed " %(decadic_percent,feature)
+                percList[decadic_percent]
+        return percList
 
 ### outdated functions
 
@@ -394,3 +420,107 @@ def allpile(sequenceDictionary, genePileup, geneName, start, stop,secondpass):
                             
         
     return resDict
+
+
+def MaskAFasta (vcffile, record_dict, out_raw ):
+    """
+    No reason to keep this as an independant script
+    Maskafasta takes a vcf like file, a fasta file and the direction for an out file ( an open handle)
+    replaces the nucleotides specified in the vcf with 'N' to enable a more accurate remapping
+    """
+##    vcffile = csv.reader(vcf_raw, delimiter ='\t')  # outside the function, add to SNP2QUant
+##    record_dict = SeqIO.index('%s' %(args.fasta), "fasta") # same here,  add outside function
+    vcfDict = {}
+    fastaDict = {}
+    for row in vcffile:
+        if not '#' in row[0]:
+##            Chromosome, position as keys
+##            REF ALT and Quality as values
+            vcfDict[row[0],row[1]] = [row[3],row[4],row[5]]
+            
+    for elements, values in record_dict.items():
+        seq_mutable = values.seq.tomutable()
+        fastaDict[elements] = seq_mutable
+
+    for element, values in vcfDict.items():
+##        The VCF file contins the absolute position of the SNP on the sequence, so just replace it with an N
+        fastaDict[element[0]][int(element[1])] = 'N'
+
+    for element, value in fastaDict.items():
+##        value.id = element
+        out_seqs = SeqIO.SeqRecord((value), id = element)
+        SeqIO.write(out_seqs, out_raw, "fasta")
+            
+
+    
+def add2masterDict(indict, masterdict):
+    """
+    Extend the MasterDictionary to contain all possible SNPs
+    """
+    for element, values in indict.items():
+        masterdict[element] = []
+    return masterdict
+
+
+def binning(inDict, masterDict):
+    """
+    Appends the SNP count in the individual observations to the MasterDictionary
+    """
+    for element, value in inDict.items():
+        SNPcount = 0
+        SNPs = int(value[2])
+        totalCoverage = int(value[3])
+##        print value[2], value[3]
+        if totalCoverage < 20:
+            totalCoverage = 20
+
+        count = 0
+        # now create bins,  randomly draw from one sample 50 times (of whole coverage) and store how many SNPSs you get
+        for repeat in range(0, 50):
+##            print totalCoverage
+            choice = random.randrange(0,int(totalCoverage))
+            
+            if choice < SNPs:
+                count +=1
+
+        masterDict[element].append(count)
+
+    return masterDict
+
+
+def populateMasterDict(inDict1,inDict2=0,inDict3=0):
+    """
+    Creates the MAsterDictionary, and populates it with the keys for SNPS from up to 3 samples
+    """
+    masterDict = {}
+    if inDict2 == 0:
+        masterDict = add2masterDict(inDict1,masterDict)
+    if inDict3 == 0:
+        masterDict = add2masterDict(inDict1,masterDict)
+        masterDict = add2masterDict(inDict2,masterDict)
+    else:
+        masterDict = add2masterDict(inDict1,masterDict)
+        masterDict = add2masterDict(inDict2,masterDict)
+        masterDict = add2masterDict(inDict3,masterDict)
+    
+    return masterDict
+
+
+def extendMasterDict(inDict1,inDict2=0,inDict3=0):
+    """
+    Filling the master Dictionary with actual values, we take 20 observations, choosen from randomly selected datasets, of which we have up to 3...
+    This should result in a poisson like distribution for the low expressed data, depending on their mean expression
+    """
+    for fill in range(0,20):
+        chosenOne = random.choice(['inDict','inDict2','inDict3'])
+        if chosenOne == 'inDict':
+            chosenOne = inDict
+        if chosenOne == 'inDict2':
+            chosenOne = inDict2
+        if chosenOne == 'inDict3':
+            chosenOne = inDict3
+            
+        print len(chosenOne)
+        binning(chosenOne, masterDict)
+
+

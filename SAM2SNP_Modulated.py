@@ -5,6 +5,7 @@ from _functions import list2dict
 from _functions import wobble
 from _functions import classifydict
 from _functions import getPercentage
+from _functions import parse_gff
 import re
 import csv
 import sys,argparse
@@ -35,7 +36,7 @@ parser.add_argument('-gtf',
 parser.add_argument('-bam',
                     dest='bam',
                     required = True,
-                    help='Input the bam file of the Alignment.  Tophat2 output worksfine,  NoxtGenMapper or STAR should be fine too.',
+                    help='Input the bam file of the Alignment.  Tophat2 output works,  NextGenMapper or STAR should be fine too.',
                     metavar = 'FILE',
                     #type=lambda x: is_valid_file(parser,x)
                     )
@@ -73,8 +74,13 @@ args = parser.parse_args()
 #####################################################
 
 with open("%s" %(args.fasta), "rU") as fasta_raw, open("%s"%(args.gtf),"r") as gff_raw, open('%s' %(args.out),'w') as out_raw:
+    print '[IMPORT] Loading BAM File'
     samfile = pysam.AlignmentFile("%s" %(args.bam),"rb")
-    records = list(SeqIO.parse(fasta_raw, "fasta"))
+    print '[IMPORT] Loading Fasta file %s' %fasta_raw
+##    records = list(SeqIO.parse(args.fasta, "fasta"))
+    print '[IMPORT] Loading GFF/GTF File'
+
+    
     gff_file = csv.reader(gff_raw, delimiter = '\t')
     outfile = csv.writer(out_raw, delimiter = '\t')
 
@@ -85,25 +91,56 @@ with open("%s" %(args.fasta), "rU") as fasta_raw, open("%s"%(args.gtf),"r") as g
     resultDict ={}
     SNPDict = {}
     writecount = 0
+    origin = 'ENSEMBL'
 
+    print '[STATUS] Initiating gff parsing'
+    gffDict = parse_gff(gff_file, origin)
+    print "[STATUS] gff file with %s features" %(len(gffDict))
+
+##    def parse_gff(gff_file, origin):
+##        for row in gff_file:
+####        print row
+##        # skip header
+##        if not '#' in row[0]:
+##            try:
+##                if row[2] == args.feature:
+##                    if not origin =='ENSEMBL':
+##                # legacy,  this has to be more flexible
+##                        gffDict[row[0],row[8].split('"')[1]] = [row[3],row[4],row[6],row[2]]
+##                    if origin == 'ENSEMBL':
+##                        name = re.split('=|;',row[8])[2]
+##                        gffDict[row[0],name] = [row[3],row[4],row[6],row[2]]
+##            except:
+####                print 'wrong gff configuration in %s' %(row[0])
+##                pass
+
+
+    
 
     # populate gff dictionary
-    for row in gff_file:
-        # skip header
-        if not '#' in row[0]:
-            try:
-                if row[2] == args.feature:
-                # legacy,  this has to be more flexible
-                    gffDict[row[0],row[8].split('"')[1]] = [row[3],row[4],row[6],row[2]]
-            except:
-##                print 'wrong gff configuration in %s' %(row[0])
-                pass
-    print "gff file with %s features" %(len(gffDict))
+##    for row in gff_file:
+####        print row
+##        # skip header
+##        if not '#' in row[0]:
+##            try:
+##                if row[2] == args.feature:
+##                    if not origin =='ENSEMBL':
+##                # legacy,  this has to be more flexible
+##                        gffDict[row[0],row[8].split('"')[1]] = [row[3],row[4],row[6],row[2]]
+##                    if origin == 'ENSEMBL':
+##                        name = re.split('=|;',row[8])[2]
+##                        gffDict[row[0],name] = [row[3],row[4],row[6],row[2]]
+##            except:
+####                print 'wrong gff configuration in %s' %(row[0])
+##                pass
+##    print "gff file with %s features" %(len(gffDict))
 
 
-    print " starting analysis "
-    print "0 percent of %s analyzed " %(args.feature)
-    for element in records:
+    
+    print "[STATUS]  starting analysis .. This may take a while"
+    print "[STATUS] 0 percent of %ss analyzed " %(args.feature)
+    perc_list = []
+    for element in SeqIO.parse(fasta_raw, "fasta"):
         
         for key,value in gffDict.items():
             fastadict = {}
@@ -119,7 +156,9 @@ with open("%s" %(args.fasta), "rU") as fasta_raw, open("%s"%(args.gtf),"r") as g
                              
                 genecount +=1
                 # print gene count in percent of features  every 10 percent
-                getPercentage(genecount,len(gffDict),args.feature)
+                getPercentage(genecount,len(gffDict),args.feature,perc_list)
+                
+##                print '%s genes' %(genecount)
                 
                 resultDict[gene]= flexpile(fastadict,samfile.pileup("%s" %(element.id),start,stop),element.id, start, stop, args.spass)
                     
@@ -127,7 +166,7 @@ with open("%s" %(args.fasta), "rU") as fasta_raw, open("%s"%(args.gtf),"r") as g
     
 
     single_SNPDict = {}
-    print ' Writing to file ' 
+    print '[EXPORTING]  Writing to file ' 
     for element, values in resultDict.items():
         for elementx, valuex in values.items():
             
@@ -138,7 +177,7 @@ with open("%s" %(args.fasta), "rU") as fasta_raw, open("%s"%(args.gtf),"r") as g
 
                     outfile.writerow([element, elementx, valuex[0], elementn, valuen[0],valuen[1],valuen[2]])
                     writecount += 1
-    print '%s SNPs written to file' %(writecount)
+    print '[RUN SUCCESSFUL] %s SNPs written to file' %(writecount)
             
 
 
