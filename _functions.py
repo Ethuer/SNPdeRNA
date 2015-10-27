@@ -5,18 +5,22 @@ import operator
 # Funtions for the RNAseq SNP expression 
 from Bio.Alphabet import IUPAC
 
-def mutateSequence(sequence,ident,vcfDict,start):
+
+
+
+
+def mutateSequence(sequence,vcfposition,altnucleotide,start):
     """
+    sequence contains protein sequence for the gene,
+    vcfDict should contain the ALT nucleotide and the position of the SNP
+    start is necessary since the vcfDict contains the absolute position, the relative position of the SNP is discerned from the starting value
     sequence is a mutable nucleotide fasta
     the identification number is record.id for the fasta seq,  so only the snps from that chromosome are considered
     the vcfDictionary contains the possible SNPs (prevalidation)
     the start position is the start of the gene on the chromosome, important for the conversion between vcfDict starting value and gene start
     """
-    for element, value in vcfDict.items():
-        if element[0] == ident:
-            position = int(element[1]) - int(start)
-            sequence[position] = value[1]
-             
+    position = int(vcfposition) - int(start)
+    sequence[position] = altnucleotide        
     return sequence
 
 
