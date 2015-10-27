@@ -5,21 +5,67 @@ import operator
 # Funtions for the RNAseq SNP expression 
 from Bio.Alphabet import IUPAC
 
+def mutateSequence(sequence,ident,vcfDict,start):
+    """
+    sequence is a mutable nucleotide fasta
+    the identification number is record.id for the fasta seq,  so only the snps from that chromosome are considered
+    the vcfDictionary contains the possible SNPs (prevalidation)
+    the start position is the start of the gene on the chromosome, important for the conversion between vcfDict starting value and gene start
+    """
+    for element, value in vcfDict.items():
+        if element[0] == ident:
+            position = int(element[1]) - int(start)
+            sequence[position] = value[1]
+             
+    return sequence
 
-def parse_gff(gff_file, origin):
+
+# transfor original sequence into dictionary,  count for keys.  speeds up search
+def findSyn(proteinDict,proteinlistAlt,ident,vcfDict,start):
+    """
+    proteinDict was created with the above mentioned function,
+    proteinDictAlt is a mutable string from Bio, containing the alternative Protein sequence
+    """
+    count = 0
+    snpChromosome = {}
+    snpPositions = []
+    for element in proteinlistAlt:
+        
+        if proteinDict[count] != element:
+            snpPositions.append(count)
+
+        count +=1
+        
+    
+    
+    for element, value in vcfDict.items():
+        if element[0] == ident:
+
+            # Python seems to always round to the lower integer. POSSIBLE BUG- I may need to improve the rounding algorythm
+            
+            position = (int(element[1]) - int(start)) / 3
+            if position in snpPositions:
+                vcfDict[element].append('NonSyn')
+            if position not in snpPositions:
+                vcfDict[element].append('Syn')    
+    
+    return vcfDict
+
+def parse_gff(gff_file, origin,feature):
     """
     Parse a gff file,  extend this to encompass USCS /  SGD/CGD IDs  
     """
     gffDict = {}
     for row in gff_file:
-##        print row
-        # skip header
         if not '#' in row[0]:
             try:
-                if row[2] == args.feature:
+                if row[2] == feature:
+                    
                     if not origin =='ENSEMBL':
                 # legacy,  this has to be more flexible
+                
                         gffDict[row[0],row[8].split('"')[1]] = [row[3],row[4],row[6],row[2]]
+                        
                     if origin == 'ENSEMBL':
                         name = re.split('=|;',row[8])[2]
                         gffDict[row[0],name] = [row[3],row[4],row[6],row[2]]
@@ -55,6 +101,8 @@ def writevcfheader(switch, outfile):
 ##        outfile.writerow(["##FORMAT=<ID=HQ,Number=2,Type=Integer,Description=\"Haplotype Quality\">"])
 ##        outfile.writerow(["#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\tSample1\tSample2\tSample3"])
 ##
+
+        
 def getTranscripts(chromosome,gffDict):
     """
     getTranscript takes the fasta sequence of a Chromosome gtfDictionary [[[Chromosome,gene_id]= start,stop,orientation,feature  ]] file and returns the parsed location for the sampile
@@ -303,9 +351,12 @@ def getPercentage(number, total, feature, percList):
         if percent > 9:
             decadic_percent = round(percent,1)
             if not decadic_percent in percList:
-                
+                decadic_percent = int(decadic_percent)
                 print "[STATUS] %s percent of %ss analyzed " %(decadic_percent,feature)
-                percList[decadic_percent]
+                try:
+                    percList[decadic_percent]
+                except:
+                    pass
         return percList
 
 ### outdated functions

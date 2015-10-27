@@ -6,6 +6,8 @@ from _functions import wobble
 from _functions import classifydict
 from _functions import getPercentage
 from _functions import parse_gff
+from _functions import mutateSequence
+from _functions import findSyn
 import re
 import csv
 import sys,argparse
@@ -68,6 +70,14 @@ parser.add_argument('-secondpass',
                     #type=argparse.FileType('w')
                     )
 
+parser.add_argument('-minqual',
+                    dest='minqual',
+                    required = False,
+                    default='1.0',
+                    help='Minimum cutoff, a simple p value from a binomial test to discern whether the coverage could have been caused by the Illumina technical error of 1-1.7%. Default is 1 (off), can be set to 0.05',
+                    metavar = 'FLOAT',
+                    #type=argparse.FileType('w')
+                    )
 
 args = parser.parse_args()
 
@@ -79,7 +89,7 @@ with open("%s" %(args.fasta), "rU") as fasta_raw, open("%s"%(args.gtf),"r") as g
     print '[IMPORT] Loading Fasta file %s' %fasta_raw
 ##    records = list(SeqIO.parse(args.fasta, "fasta"))
     print '[IMPORT] Loading GFF/GTF File'
-
+    print '[IMPORT] Complete,   here we go'
     
     gff_file = csv.reader(gff_raw, delimiter = '\t')
     outfile = csv.writer(out_raw, delimiter = '\t')
@@ -91,53 +101,19 @@ with open("%s" %(args.fasta), "rU") as fasta_raw, open("%s"%(args.gtf),"r") as g
     resultDict ={}
     SNPDict = {}
     writecount = 0
-    origin = 'ENSEMBL'
+    origin = 'OTHER'
 
     print '[STATUS] Initiating gff parsing'
-    gffDict = parse_gff(gff_file, origin)
-    print "[STATUS] gff file with %s features" %(len(gffDict))
-
-##    def parse_gff(gff_file, origin):
-##        for row in gff_file:
-####        print row
-##        # skip header
-##        if not '#' in row[0]:
-##            try:
-##                if row[2] == args.feature:
-##                    if not origin =='ENSEMBL':
-##                # legacy,  this has to be more flexible
-##                        gffDict[row[0],row[8].split('"')[1]] = [row[3],row[4],row[6],row[2]]
-##                    if origin == 'ENSEMBL':
-##                        name = re.split('=|;',row[8])[2]
-##                        gffDict[row[0],name] = [row[3],row[4],row[6],row[2]]
-##            except:
-####                print 'wrong gff configuration in %s' %(row[0])
-##                pass
-
-
+    gffDict = parse_gff(gff_file, origin,args.feature)
+    if (len(gffDict)) == 0:
+        print "[STATUS] The gff/gtf file has 0 features,  check the files structure or the existence of the selected feature"
+        exit 
+    else:
+        print "[STATUS] gff file with %s features" %(len(gffDict))
     
 
-    # populate gff dictionary
-##    for row in gff_file:
-####        print row
-##        # skip header
-##        if not '#' in row[0]:
-##            try:
-##                if row[2] == args.feature:
-##                    if not origin =='ENSEMBL':
-##                # legacy,  this has to be more flexible
-##                        gffDict[row[0],row[8].split('"')[1]] = [row[3],row[4],row[6],row[2]]
-##                    if origin == 'ENSEMBL':
-##                        name = re.split('=|;',row[8])[2]
-##                        gffDict[row[0],name] = [row[3],row[4],row[6],row[2]]
-##            except:
-####                print 'wrong gff configuration in %s' %(row[0])
-##                pass
-##    print "gff file with %s features" %(len(gffDict))
-
-
     
-    print "[STATUS]  starting analysis .. This may take a while"
+    print "[STATUS] starting Gene-wise analysis .. This may take a while"
     print "[STATUS] 0 percent of %ss analyzed " %(args.feature)
     perc_list = []
     for element in SeqIO.parse(fasta_raw, "fasta"):
@@ -159,9 +135,17 @@ with open("%s" %(args.fasta), "rU") as fasta_raw, open("%s"%(args.gtf),"r") as g
                 getPercentage(genecount,len(gffDict),args.feature,perc_list)
                 
 ##                print '%s genes' %(genecount)
-                
                 resultDict[gene]= flexpile(fastadict,samfile.pileup("%s" %(element.id),start,stop),element.id, start, stop, args.spass)
-                    
+
+                # create the syn / nonsyn differentiation directly in the classification loop should be fastest
+                for element, value in resultDict[gene].items():
+                    print classifydict(value)
+                    print element
+##                mutatesequence(element.seq,element.id,vcfDict,start)
+
+
+
+    # lets append synonymous and nonsyn to the resultDictionary
 
     
 
@@ -174,10 +158,16 @@ with open("%s" %(args.fasta), "rU") as fasta_raw, open("%s"%(args.gtf),"r") as g
             for elementn, valuen in single_SNPDict.items():
                 if int(valuen[0]) > 0:
 ##                print 'element = %s,  elementx = %s, valuex[0] = %s' %(element, elementx, values) 
+                    # this is the VCF like format,
+                    # gene, position, REF, ALT,...
+                    if float(valuen[2]) < float(args.minqual):
+                        outfile.writerow([element, elementx, valuex[0], elementn, valuen[0],valuen[1],valuen[2]])
+                        writecount += 1
 
-                    outfile.writerow([element, elementx, valuex[0], elementn, valuen[0],valuen[1],valuen[2]])
-                    writecount += 1
-    print '[RUN SUCCESSFUL] %s SNPs written to file' %(writecount)
+    if int(writecount) > 0:
+        print '[RUN SUCCESSFUL] %s Preliminary SNPs written to file' %(writecount)
+    else:
+        print '[RUN FAILED] %s Preliminary SNPs written to file' %(writecount)
             
 
 

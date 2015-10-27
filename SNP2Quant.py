@@ -173,6 +173,9 @@ with open('%s' %(args.rep1),'r') as in_raw,  open('%s' %(args.out),'w') as out_r
     for repeat in range(0,20):
         extendMasterDict(inDict1,inDict2,inDict3)
 
+    # now there should be a populated dictionary.
+    # next step,  splitting into training data, and prediction data
+    # for the moment, take 
     
     count = 0    
     for element, value in inDict.items():
