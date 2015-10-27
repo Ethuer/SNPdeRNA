@@ -25,35 +25,35 @@ def mutateSequence(sequence,vcfposition,altnucleotide,start):
 
 
 # transfor original sequence into dictionary,  count for keys.  speeds up search
-def findSyn(proteinDict,proteinlistAlt,ident,vcfDict,start):
+def findSyn(position,vcfposition,altnucleotide,start):
     """
     proteinDict was created with the above mentioned function,
     proteinDictAlt is a mutable string from Bio, containing the alternative Protein sequence
     """
-    count = 0
+    count_func = 0
     snpChromosome = {}
     snpPositions = []
-    for element in proteinlistAlt:
+    for element, value in proteinlistAlt.items():
         
-        if proteinDict[count] != element:
-            snpPositions.append(count)
-
-        count +=1
-        
-    
-    
-    for element, value in vcfDict.items():
-        if element[0] == ident:
-
-            # Python seems to always round to the lower integer. POSSIBLE BUG- I may need to improve the rounding algorythm
+        if proteinDict[count_func] != value:
+##            print proteinDict[count_func] , value
             
-            position = (int(element[1]) - int(start)) / 3
-            if position in snpPositions:
-                vcfDict[element].append('NonSyn')
-            if position not in snpPositions:
-                vcfDict[element].append('Syn')    
+            snpPositions.append(count_func)
+##            print 'found change in %s' %(count_func)
+            count_func +=1
+
     
-    return vcfDict
+
+            # Python seems to always round to the lower integer. POSSIBLE BUG- need to improve the rounding algorythm
+            
+    position = (int(vcfposition) - int(start)) / 3
+##    print 'looking for change in %s' %(position), 
+    if position in snpPositions:
+        synity = 'NonSyn'
+    if position not in snpPositions:
+        synity = 'Syn'   
+    
+    return synity
 
 def parse_gff(gff_file, origin,feature):
     """

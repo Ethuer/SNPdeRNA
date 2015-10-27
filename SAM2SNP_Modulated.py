@@ -33,7 +33,7 @@ parser.add_argument('-fasta',
 parser.add_argument('-gtf',
                     dest='gtf',
                     required = True,
-                    help='Input a gtf file to check for the SNPS on gene ### Try to remove necessity for this',
+                    help='Input a gtf file to check for the SNPS on gene, ### Try to remove necessity for this, there is no technical need for it',
                     metavar = 'FILE',
                     #type=lambda x: is_valid_file(parser,x)
                     )
@@ -50,7 +50,7 @@ parser.add_argument('-out',
                     dest='out',
                     required = False,
                     default='output.tab',
-                    help='Output file,  so far in undefined format  gene snp-position original_base snp_base count_of occurance accumulated_probability',
+                    help='Output file,  so far in vcf-like  gene snp-position original_base snp_base count_of occurance accumulated_probability',
                     metavar = 'FILE',
                     #type=lambda x: is_valid_file(parser,x)
                     )
@@ -148,7 +148,7 @@ with open("%s" %(args.fasta), "rU") as fasta_raw, open("%s"%(args.gtf),"r") as g
                 DNA = Seq(str(element.seq[start:stop]),generic_dna)
                 protein = DNA.translate()
                 protein = list2dict(protein[0:len(protein)],0)
-                
+                positionList = []
                 for sub_element, value in resultDict[gene].items():
                     
                     converted = classifydict(value)
@@ -156,22 +156,28 @@ with open("%s" %(args.fasta), "rU") as fasta_raw, open("%s"%(args.gtf),"r") as g
                         if int(valuen[0]) > 0 and float(valuen[2]) < float(args.minqual):
                             count +=1
 
-                            # now check for synonymity
+
+                            # now check for synonymity,  move this to functions
                             alternativeSeq = MutableSeq(str(element.seq[start:stop]), generic_dna)
-                            # replace the vcf with the real vcf keys
-                            
-                            alternativeSeq = mutateSequence(alternativeSeq,sub_element,valuen[1],start)
+##                            print nucleotide
+                            alternativeSeq = mutateSequence(alternativeSeq,sub_element,nucleotide,start)
                             alternativeSeq = Seq(str(alternativeSeq), generic_dna)
                             altprot = alternativeSeq.translate()
                             altprot = list2dict(altprot[0:len(protein)],0)
-                            
-                            findSyn(protein,altprot,element.id,vcf,0)
-                            # correct againstpython specific error of starting counting at 0. 
+
+                            protposition = int((sub_element-start)/3)
+                            if protein[protposition] != altprot[protposition]:
+                                positionList.append(sub_element)
+                                synonym = 'NonSynon'
+                            if protein[protposition] == altprot[protposition]:
+                                synonym = 'Syn'
+
+                            # correct against python specific error of starting count at 0. 
 
                             truepos = int(sub_element)+1
-                            outfile.writerow([gene, truepos, value[0], nucleotide, valuen[0],valuen[1],valuen[2]])
+                            outfile.writerow([gene, truepos, value[0], nucleotide, valuen[0],valuen[1],valuen[2],synonym])
                             writecount += 1
-                print count
+##                print count
 
 
 
