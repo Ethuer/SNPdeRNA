@@ -76,8 +76,8 @@ parser.add_argument('-secondpass',
 parser.add_argument('-minqual',
                     dest='minqual',
                     required = False,
-                    default='1.0',
-                    help='Minimum cutoff, a simple p value from a binomial test to discern whether the coverage could have been caused by the Illumina technical error of 1-1.7%. Default is 1 (off), can be set to 0.05',
+                    default='1',
+                    help='Minimum cutoff, a simple p value from a binomial test',
                     metavar = 'FLOAT',
                     #type=argparse.FileType('w')
                     )
@@ -146,7 +146,10 @@ with open("%s" %(args.fasta), "rU") as fasta_raw, open("%s"%(args.gtf),"r") as g
 
                 # translate fasta of the gene to protein
                 DNA = Seq(str(element.seq[start:stop]),generic_dna)
-                protein = DNA.translate()
+                try:
+                    protein = DNA.translate()
+                except:
+                    print 'Error in translating Protein %s' %(element.id)
                 protein = list2dict(protein[0:len(protein)],0)
                 positionList = []
                 for sub_element, value in resultDict[gene].items():

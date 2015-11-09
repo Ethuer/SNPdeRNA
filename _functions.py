@@ -2,6 +2,7 @@ import pysam
 from Bio import SeqIO
 from scipy import stats
 import operator
+import random
 # Funtions for the RNAseq SNP expression 
 from Bio.Alphabet import IUPAC
 
@@ -25,37 +26,36 @@ def mutateSequence(sequence,vcfposition,altnucleotide,start):
 
 
 # transfor original sequence into dictionary,  count for keys.  speeds up search
-def findSyn(position,vcfposition,altnucleotide,start):
+def findSyn(position_in_prot,vcfposition,altnucleotide,start):
     """
     proteinDict was created with the above mentioned function,
     proteinDictAlt is a mutable string from Bio, containing the alternative Protein sequence
     """
-    count_func = 0
-    snpChromosome = {}
-    snpPositions = []
-    for element, value in proteinlistAlt.items():
-        
-        if proteinDict[count_func] != value:
-##            print proteinDict[count_func] , value
-            
-            snpPositions.append(count_func)
-##            print 'found change in %s' %(count_func)
-            count_func +=1
+##    count_func = 0
+##    snpChromosome = {}
+##    snpPositions = []
+##    for element, value in proteinlistAlt.items():
+##        
+##        if proteinDict[count_func] != value:
+####            print proteinDict[count_func] , value
+##            
+##            snpPositions.append(count_func)
+####            print 'found change in %s' %(count_func)
+##            count_func +=1
 
     
-
             # Python seems to always round to the lower integer. POSSIBLE BUG- need to improve the rounding algorythm
             
     position = (int(vcfposition) - int(start)) / 3
 ##    print 'looking for change in %s' %(position), 
-    if position in snpPositions:
+    if position == snpPositions_in_prot:
         synity = 'NonSyn'
     if position not in snpPositions:
         synity = 'Syn'   
     
     return synity
 
-def parse_gff(gff_file, origin,feature):
+def parse_gff(gff_file, origin,feature='gene'):
     """
     Parse a gff file,  extend this to encompass USCS /  SGD/CGD IDs  
     """
@@ -163,15 +163,23 @@ def Phred2prob(PHRED):
 
 def csv2dict(csv_reader):
     """
-    allpile() takes a target transcript (name and sequence in dictionary form,  position and nucleotide)
-    also takes the samfile pileup from pysam invocation
-    returns a dictionary of the whole coverage of the transcript.
+    convert the csv reader into a proper dictionary
     """
     outDict = {}
     for row in csv_reader:
         outDict[row[0],row[1]] = [row[2],row[3],row[4],row[5],row[6]]
     return outDict
 
+
+
+def csv2dictIncSyn(csv_reader):
+    """
+    IF SYN, NONSyn information is given, that has to be added from row[7],  keep this optional, to enable vcf support  
+    """
+    outDict = {}
+    for row in csv_reader:
+        outDict[row[0],row[1]] = [row[2],row[3],row[4],row[5],row[6],row[7]]
+    return outDict
 
 
 def flexpile(sequenceDictionary, genePileup, geneName, start, stop,secondpass):
@@ -522,10 +530,16 @@ def binning(inDict, masterDict):
     """
     Appends the SNP count in the individual observations to the MasterDictionary
     """
-    for element, value in inDict.items():
+    for element, value in masterDict.items():
         SNPcount = 0
-        SNPs = int(value[2])
-        totalCoverage = int(value[3])
+        if element in inDict:
+            
+            SNPs = int(inDict[element][2])
+            totalCoverage = int(inDict[element][3])
+
+        elif element not in inDict:
+            SNPs = 0
+            totalCoverage = 20
 ##        print value[2], value[3]
         if totalCoverage < 20:
             totalCoverage = 20
@@ -539,9 +553,46 @@ def binning(inDict, masterDict):
             if choice < SNPs:
                 count +=1
 
-        masterDict[element].append(count)
+        value.append(count)
 
     return masterDict
+
+def extendMasterDict(masterDict,inDict1,inDict2=0,inDict3=0):
+    """
+    Filling the master Dictionary with actual values, we take 20 observations, choosen from randomly selected datasets, of which we have up to 3...
+    This should result in a poisson like distribution for the low expressed data, depending on their mean expression
+
+    This function selects one of the replicates, from which the observations are chosen
+    """
+
+
+
+    for fill in range(0,2):
+        if inDict2 !=0 and inDict3 !=0 :
+            chosenOne = random.choice(['inDict1','inDict2','inDict3'])
+        if inDict2 !=0 :
+            chosenOne = random.choice(['inDict1','inDict2'])
+        if inDict2 ==0 and inDict3 ==0:
+            chosenOne = 'inDict1'
+
+        print chosenOne
+        
+
+
+        
+           # take value from a random dictionary 
+        if chosenOne == 'inDict3':
+            chosenOne = inDict3
+        if chosenOne == 'inDict2' :
+            chosenOne = inDict2
+        if chosenOne == 'inDict1':
+            chosenOne = inDict1
+            
+##        print len(chosenOne)
+
+            
+        binning(chosenOne, masterDict)
+
 
 
 def populateMasterDict(inDict1,inDict2=0,inDict3=0):
@@ -561,22 +612,5 @@ def populateMasterDict(inDict1,inDict2=0,inDict3=0):
     
     return masterDict
 
-
-def extendMasterDict(inDict1,inDict2=0,inDict3=0):
-    """
-    Filling the master Dictionary with actual values, we take 20 observations, choosen from randomly selected datasets, of which we have up to 3...
-    This should result in a poisson like distribution for the low expressed data, depending on their mean expression
-    """
-    for fill in range(0,20):
-        chosenOne = random.choice(['inDict','inDict2','inDict3'])
-        if chosenOne == 'inDict':
-            chosenOne = inDict
-        if chosenOne == 'inDict2':
-            chosenOne = inDict2
-        if chosenOne == 'inDict3':
-            chosenOne = inDict3
-            
-        print len(chosenOne)
-        binning(chosenOne, masterDict)
 
 
