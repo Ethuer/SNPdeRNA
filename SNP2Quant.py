@@ -95,7 +95,7 @@ with open('%s' %(args.rep1),'r') as in_raw,  open('%s' %(args.out),'w') as out_r
 
     # open the replicates , create dictionaries
     infile = csv.reader(in_raw, delimiter = '\t')
-    inDict1 = csv2dict(infile)
+    inDict1 = csv2dictIncSyn(infile)
 
     if len(inDict1) == 0:
         exit
@@ -104,7 +104,7 @@ with open('%s' %(args.rep1),'r') as in_raw,  open('%s' %(args.out),'w') as out_r
     try:
         with open('%s' %(args.rep2),'r') as in_2raw:
             infile2 = csv.reader(in_2raw, delimiter = '\t')
-            inDict2 = csv2dict(infile2)
+            inDict2 = csv2dictIncSyn(infile2)
     except:
         inDict2 = 0
         print '[OPEN] No replicate 2'
@@ -113,7 +113,7 @@ with open('%s' %(args.rep1),'r') as in_raw,  open('%s' %(args.out),'w') as out_r
     try:
         with open('%s' %(args.rep3),'r') as in_3raw:
             infile3 = csv.reader(in_3raw, delimiter = '\t')
-            inDict3 = csv2dict(infile3)
+            inDict3 = csv2dictIncSyn(infile3)
 
     except:
         inDict3 = 0
@@ -186,36 +186,70 @@ with open('%s' %(args.rep1),'r') as in_raw,  open('%s' %(args.out),'w') as out_r
     print '[STATUS] Creating and populating Dictionary'
 
     # Populate the master dictionary
-    for repeat in range(0,2):
+    for repeat in range(0,20):
         extendMasterDict(masterDict,inDict1,inDict2,inDict3)
 
     print 'Masterdict with %s entries' %(len(masterDict))
 
 
-    for element, value in masterDict.items():
-##        try:
-##            print 'inDict1 %s \n'   %(inDict1[element])
-##        except:
-##            print 'not in inDict1'
+
+
+    # Find false positives
+
+    # a nonparametric approach, if there are replicates, missing overlap with low expression
+    # a parametric approach, taking the lowest 5 10 15 % as teaching data,
+    negDict = {}
+    posDict = {}
+    if inDict2 == 0:
+        print '[STATUS] No replicates,  using parametric approach to evaluate data'
+        for element, values in inDict1.items():
+            # using the uncorrected probability value from the binomial distribution fitting
+            if float(values[4]) < 0.05 and 'NonSynon' in values[5]:
+                negDict[element] = masterDict[element]
+            else:
+                posDict[element] = masterDict[element]
+            
+
+    else:
+        print '[STATUS] Scanning data for False positives'
+        # check for lacking overlaps, < 34% replicates, immediately considered False
+        # > 34  (2 out of 3,  if probability > 0.1
+        for element,value in masterDict.items():
+
+            try:
+                
+                if inDict3 != 0 and element not in inDict2 and element not in inDict3:
+                    negDict[element] = value
+                    
+                elif element not in inDict1 and element not in inDict2:
+                    if element not in negDict:
+                        negDict[element] = value
+
+                # extend the teaching to nonsynonymous SNPS in only 2 out of 3 replicates
+
+                if element not in inDict1 and 'NonSynon' in value[5]:
+                    if element not in negDict:
+                        negDict[element] = value
+
+                if element not in inDict2 and 'NonSynon' in value[5]:
+                     if element not in negDict:
+                        negDict[element] = value
+                   
+                    
+            except:
+                pass
+        for element, value in masterDict.items():
+            posDict[element] = value
+
+    print len(posDict), len(negDict)
+
+    # convert noiseDict to np.array
+    noiseArray = [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+    for element, value in noiseDict.items():
+        np.vstack([noiseArray,value])
 ##
-##        try:
-##            print 'inDict2 %s \n'  %(inDict2[element])
-##        except:
-##            print 'not in inDict2'
-##
-##        try:
-##            print  'inDict3 %s \n'   %(inDict3[element])
-##        except:
-##            print 'not in inDict3'
-##            
-        print len(value)
-        
-##
-        
-##    # now there should be a populated dictionary.
-##    # next step,  splitting into training data, and prediction data
-##    # add syn/nonsyn as important information
-##    # 
+    noiseModel = svm.OneClassSVM(nu=(args.nu), kernel="rbf", gamma=(args.gamma),verbose=True)
+    noiseModel.fit(noiseArray)
         
 ##    
 ##    count = 0    

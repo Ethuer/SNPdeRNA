@@ -521,22 +521,27 @@ def add2masterDict(indict, masterdict):
     """
     Extend the MasterDictionary to contain all possible SNPs
     """
-    for element, values in indict.items():
-        masterdict[element] = []
+    fpDict = {}
+    try:
+        for element, values in indict.items():
+            masterdict[element] = []
+    except:
+        pass
     return masterdict
+
 
 
 def binning(inDict, masterDict):
     """
     Appends the SNP count in the individual observations to the MasterDictionary
     """
+    
     for element, value in masterDict.items():
         SNPcount = 0
         if element in inDict:
             
             SNPs = int(inDict[element][2])
             totalCoverage = int(inDict[element][3])
-
         elif element not in inDict:
             SNPs = 0
             totalCoverage = 20
@@ -555,6 +560,7 @@ def binning(inDict, masterDict):
 
         value.append(count)
 
+
     return masterDict
 
 def extendMasterDict(masterDict,inDict1,inDict2=0,inDict3=0):
@@ -567,7 +573,7 @@ def extendMasterDict(masterDict,inDict1,inDict2=0,inDict3=0):
 
 
 
-    for fill in range(0,2):
+    for fill in range(0,1):
         if inDict2 !=0 and inDict3 !=0 :
             chosenOne = random.choice(['inDict1','inDict2','inDict3'])
         if inDict2 !=0 :
@@ -575,7 +581,6 @@ def extendMasterDict(masterDict,inDict1,inDict2=0,inDict3=0):
         if inDict2 ==0 and inDict3 ==0:
             chosenOne = 'inDict1'
 
-        print chosenOne
         
 
 
