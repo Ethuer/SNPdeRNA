@@ -85,6 +85,13 @@ parser.add_argument('-fasta',
                     help='gamma value for SVM fitting,  defaults to 0.01',
                     metavar = 'FILE',
                     )
+parser.add_argument('-fastaOut',
+                    dest='fastaOut',
+                    required = False,
+                    default = 'none',
+                    help='gamma value for SVM fitting,  defaults to 0.01',
+                    metavar = 'FILE',
+                    )
 
 args = parser.parse_args()
 
@@ -99,7 +106,7 @@ with open('%s' %(args.rep1),'r') as in_raw,  open('%s' %(args.out),'w') as out_r
 
     if len(inDict1) == 0:
         exit
-        print 'Read the replicate 1 incorrectly, please veryfy that the format is correct'
+        print '[ERROR] Read the replicate 1 incorrectly, please veryfy that the format is correct'
     
     try:
         with open('%s' %(args.rep2),'r') as in_2raw:
@@ -107,7 +114,7 @@ with open('%s' %(args.rep1),'r') as in_raw,  open('%s' %(args.out),'w') as out_r
             inDict2 = csv2dictIncSyn(infile2)
     except:
         inDict2 = 0
-        print '[OPEN] No replicate 2'
+        print '[OPEN] No replicate 2,  no problem'
         pass
 
     try:
@@ -117,7 +124,7 @@ with open('%s' %(args.rep1),'r') as in_raw,  open('%s' %(args.out),'w') as out_r
 
     except:
         inDict3 = 0
-        print '[OPEN] No replicate 3'
+        print '[OPEN] No replicate 3, no problem'
         pass
     
     print '[OPEN] All files loaded and ready'
@@ -189,7 +196,7 @@ with open('%s' %(args.rep1),'r') as in_raw,  open('%s' %(args.out),'w') as out_r
     for repeat in range(0,20):
         extendMasterDict(masterDict,inDict1,inDict2,inDict3)
 
-    print 'Masterdict with %s entries' %(len(masterDict))
+    print '[STATUS] Masterdict with %s entries' %(len(masterDict))
 
 
 
@@ -204,7 +211,7 @@ with open('%s' %(args.rep1),'r') as in_raw,  open('%s' %(args.out),'w') as out_r
         print '[STATUS] No replicates,  using parametric approach to evaluate data'
         for element, values in inDict1.items():
             # using the uncorrected probability value from the binomial distribution fitting
-            if float(values[4]) < 0.05 and 'NonSynon' in values[5]:
+            if float(values[4]) > 0.1 and 'NonSynon' in values[5]:
                 negDict[element] = masterDict[element]
             else:
                 posDict[element] = masterDict[element]
@@ -241,43 +248,65 @@ with open('%s' %(args.rep1),'r') as in_raw,  open('%s' %(args.out),'w') as out_r
         for element, value in masterDict.items():
             posDict[element] = value
 
-    print len(posDict), len(negDict)
 
     # convert noiseDict to np.array
     # normalize to range [0,1],   easy since its binned count data
 
             
-    noiseArray = [0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]
+    noiseArray = [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
     for element, values in negDict.items():
         noiseArray = np.vstack([noiseArray,values])
 
 ##    noiseArray = np.fromiter(noiseDict.iteritems(), dtype=dtype, count=len(noiseDict))
 
 ##    noiseModel = svm.OneClassSVM(nu=float(args.nu), kernel="poly", gamma=float(args.gamma),verbose=True,cache_size=1000.0)
-    noiseModel = svm.OneClassSVM(nu=0.1, kernel="poly", gamma=0.1,verbose=True,cache_size=1000.0)
+    # keep gamma in auto
+    noiseModel = svm.OneClassSVM(nu=0.1, kernel="poly",verbose=True,cache_size=2000.0)
 
     noiseModel.fit(noiseArray)
-
+    writtenlist = []
+    writecount = 0
     outDict = {}
+    resDict = {}
     for element, value in posDict.items():
         prediction = noiseModel.predict(value)
-
-##        outDict[element] =
+        
+        # write the SNPs to file
         if int(prediction) > 0:
-            print prediction, value
+            
+            if element in inDict1:
+                writtenlist.append(element)
+                outfile.writerow([element[0],element[1], inDict1[element][0],inDict1[element][1],inDict1[element][2],inDict1[element][3],inDict1[element][4],inDict1[element][5]])
+                resDict[element] = [inDict1[element][0],inDict1[element][1]]
+
+                writecount +=1               
+            if inDict2 != 0 and element in inDict2 and element not in writtenlist:
+                outfile.writerow([element[0],element[1], inDict2[element][0],inDict2[element][1],inDict2[element][2],inDict2[element][3],inDict2[element][4],inDict2[element][5]])
+                writtenlist.append(element)
+                resDict[element] = [inDict2[element][0],inDict2[element][1]]
+                writecount +=1
+            if inDict3 != 0 and element in inDict3 and element not in writtenlist:
+                outfile.writerow([element[0],element[1], inDict3[element][0],inDict3[element][1],inDict3[element][2],inDict3[element][3],inDict3[element][4],inDict3[element][5]])
+                writtenlist.append(element)
+                resDict[element] = [inDict3[element][0],inDict3[element][1]]
+                writecount+=1
+                
 
 
-    # write the SNPs to file
 
-
-
+    print '[STATUS] %s  SNPs written to file' %(writecount)
 
     # now mask a fasta with this information
-
+    if args.fasta:
+        with open('%s'%(args.gff),'r') as fasta_raw:
+            record_dict = SeqIO.index('%s' %(args.fasta), "fasta")
+            print '[STATUS] Silencing the fasta sequence'
+            MaskAFasta(resDict,record_dict,)
+        
 
 
     # re-map
-    # then recount the real SNPs with SAM2SNP
+    # then recount the real SNPs with SAM2SNP, get the average expression over all 3 replicates. This may need a different script for the moment
 
 
 

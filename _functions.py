@@ -486,32 +486,26 @@ def allpile(sequenceDictionary, genePileup, geneName, start, stop,secondpass):
     return resDict
 
 
-def MaskAFasta (vcffile, record_dict, out_raw ):
+def MaskAFasta (vcfDictionary, recordDictionary, outHandle ):
     """
-    No reason to keep this as an independant script
-    Maskafasta takes a vcf like file, a fasta file and the direction for an out file ( an open handle)
+    No reason to keep this as an independant script, attach to the Quantification Script.
+    Maskafasta takes the results from SNP quantification, a fasta file and the direction for an out file ( an open handle)
     replaces the nucleotides specified in the vcf with 'N' to enable a more accurate remapping
     """
 ##    vcffile = csv.reader(vcf_raw, delimiter ='\t')  # outside the function, add to SNP2QUant
 ##    record_dict = SeqIO.index('%s' %(args.fasta), "fasta") # same here,  add outside function
-    vcfDict = {}
+
     fastaDict = {}
-    for row in vcffile:
-        if not '#' in row[0]:
-##            Chromosome, position as keys
-##            REF ALT and Quality as values
-            vcfDict[row[0],row[1]] = [row[3],row[4],row[5]]
             
     for elements, values in record_dict.items():
         seq_mutable = values.seq.tomutable()
         fastaDict[elements] = seq_mutable
 
     for element, values in vcfDict.items():
-##        The VCF file contins the absolute position of the SNP on the sequence, so just replace it with an N
+##        The VCF file contains the absolute position of the SNP on the sequence, so just replace it with an N
         fastaDict[element[0]][int(element[1])] = 'N'
 
     for element, value in fastaDict.items():
-##        value.id = element
         out_seqs = SeqIO.SeqRecord((value), id = element)
         SeqIO.write(out_seqs, out_raw, "fasta")
             
@@ -545,14 +539,12 @@ def binning(inDict, masterDict):
         elif element not in inDict:
             SNPs = 0
             totalCoverage = 20
-##        print value[2], value[3]
         if totalCoverage < 20:
             totalCoverage = 20
 
         count = 0
         # now create bins,  randomly draw from one sample 50 times (of whole coverage) and store how many SNPSs you get
         for repeat in range(0, 50):
-##            print totalCoverage
             choice = random.randrange(0,int(totalCoverage))
             
             if choice < SNPs:
