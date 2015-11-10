@@ -244,13 +244,51 @@ with open('%s' %(args.rep1),'r') as in_raw,  open('%s' %(args.out),'w') as out_r
     print len(posDict), len(negDict)
 
     # convert noiseDict to np.array
-    noiseArray = [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
-    for element, value in noiseDict.items():
-        np.vstack([noiseArray,value])
-##
-    noiseModel = svm.OneClassSVM(nu=(args.nu), kernel="rbf", gamma=(args.gamma),verbose=True)
+    # normalize to range [0,1],   easy since its binned count data
+
+            
+    noiseArray = [0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]
+    for element, values in negDict.items():
+        noiseArray = np.vstack([noiseArray,values])
+
+##    noiseArray = np.fromiter(noiseDict.iteritems(), dtype=dtype, count=len(noiseDict))
+
+##    noiseModel = svm.OneClassSVM(nu=float(args.nu), kernel="poly", gamma=float(args.gamma),verbose=True,cache_size=1000.0)
+    noiseModel = svm.OneClassSVM(nu=0.1, kernel="poly", gamma=0.1,verbose=True,cache_size=1000.0)
+
     noiseModel.fit(noiseArray)
-        
+
+    outDict = {}
+    for element, value in posDict.items():
+        prediction = noiseModel.predict(value)
+
+##        outDict[element] =
+        if int(prediction) > 0:
+            print prediction, value
+
+
+    # write the SNPs to file
+
+
+
+
+    # now mask a fasta with this information
+
+
+
+    # re-map
+    # then recount the real SNPs with SAM2SNP
+
+
+
+
+    # then give an abborition to a mean as Allele specific expression
+
+
+
+
+    
+       
 ##    
 ##    count = 0    
 ##    for element, value in inDict.items():
