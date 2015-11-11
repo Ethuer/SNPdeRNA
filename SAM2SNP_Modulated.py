@@ -146,11 +146,22 @@ with open("%s" %(args.fasta), "rU") as fasta_raw, open("%s"%(args.gtf),"r") as g
 
                 # translate fasta of the gene to protein
                 DNA = Seq(str(element.seq[start:stop]),generic_dna)
+                protein = 'NNN'
+
+                
                 try:
+
+                    # explicitly trim the sequence to contain only full codons
+                    if len(DNA)%3 != 0:
+                        overlap = len(DNA)%3
+                        DNA = DNA[:-int(overlap)]
+
+                        
                     protein = DNA.translate()
+                    protein = list2dict(protein[0:len(protein)],0)
                 except:
                     print 'Error in translating Protein %s' %(element.id)
-                protein = list2dict(protein[0:len(protein)],0)
+                
                 positionList = []
                 for sub_element, value in resultDict[gene].items():
                     
@@ -165,6 +176,10 @@ with open("%s" %(args.fasta), "rU") as fasta_raw, open("%s"%(args.gtf),"r") as g
 ##                            print nucleotide
                             alternativeSeq = mutateSequence(alternativeSeq,sub_element,nucleotide,start)
                             alternativeSeq = Seq(str(alternativeSeq), generic_dna)
+                            if len(alternativeSeq)%3 != 0:
+                                overlap = len(alternativeSeq)%3
+                                alternativeSeq = alternativeSeq[:-int(overlap)]
+                            
                             altprot = alternativeSeq.translate()
                             altprot = list2dict(altprot[0:len(protein)],0)
 
@@ -180,25 +195,7 @@ with open("%s" %(args.fasta), "rU") as fasta_raw, open("%s"%(args.gtf),"r") as g
                             truepos = int(sub_element)+1
                             outfile.writerow([gene, truepos, value[0], nucleotide, valuen[0],valuen[1],valuen[2],synonym])
                             writecount += 1
-##                print count
 
-
-
-
-##    single_SNPDict = {}
-##    print '[EXPORTING]  Writing to file ' 
-##    for element, values in resultDict.items():
-##        for elementx, valuex in values.items():
-##            
-##            single_SNPDict = classifydict(valuex)
-##            for elementn, valuen in single_SNPDict.items():
-##                if int(valuen[0]) > 0:
-####                print 'element = %s,  elementx = %s, valuex[0] = %s' %(element, elementx, values) 
-##                    # this is the VCF like format,
-##                    # gene, position, REF, ALT,...
-##                    if float(valuen[2]) < float(args.minqual):
-##                        outfile.writerow([element, elementx, valuex[0], elementn, valuen[0],valuen[1],valuen[2]])
-##                        writecount += 1
 
     if int(writecount) > 0:
         print '[RUN SUCCESSFUL] %s Preliminary SNPs written to file %s' %(writecount,args.out)

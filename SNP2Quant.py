@@ -250,16 +250,13 @@ with open('%s' %(args.rep1),'r') as in_raw,  open('%s' %(args.out),'w') as out_r
 
 
     # convert noiseDict to np.array
-    # normalize to range [0,1],   easy since its binned count data
+    # normalize to range [0,1],   easy since its subset binned count data,   divide by 50(maxcount)
 
             
     noiseArray = [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
     for element, values in negDict.items():
         noiseArray = np.vstack([noiseArray,values])
 
-##    noiseArray = np.fromiter(noiseDict.iteritems(), dtype=dtype, count=len(noiseDict))
-
-##    noiseModel = svm.OneClassSVM(nu=float(args.nu), kernel="poly", gamma=float(args.gamma),verbose=True,cache_size=1000.0)
     # keep gamma in auto
     noiseModel = svm.OneClassSVM(nu=0.1, kernel="poly",verbose=True,cache_size=2000.0)
 
@@ -278,7 +275,6 @@ with open('%s' %(args.rep1),'r') as in_raw,  open('%s' %(args.out),'w') as out_r
                 writtenlist.append(element)
                 outfile.writerow([element[0],element[1], inDict1[element][0],inDict1[element][1],inDict1[element][2],inDict1[element][3],inDict1[element][4],inDict1[element][5]])
                 resDict[element] = [inDict1[element][0],inDict1[element][1]]
-
                 writecount +=1               
             if inDict2 != 0 and element in inDict2 and element not in writtenlist:
                 outfile.writerow([element[0],element[1], inDict2[element][0],inDict2[element][1],inDict2[element][2],inDict2[element][3],inDict2[element][4],inDict2[element][5]])
@@ -301,7 +297,7 @@ with open('%s' %(args.rep1),'r') as in_raw,  open('%s' %(args.out),'w') as out_r
         with open('%s'%(args.gff),'r') as fasta_raw:
             record_dict = SeqIO.index('%s' %(args.fasta), "fasta")
             print '[STATUS] Silencing the fasta sequence'
-            MaskAFasta(resDict,record_dict,)
+            MaskAFasta(resDict,record_dict)
         
 
 
@@ -311,7 +307,7 @@ with open('%s' %(args.rep1),'r') as in_raw,  open('%s' %(args.out),'w') as out_r
 
 
 
-    # then give an abborition to a mean as Allele specific expression
+    # then give an aberration to a mean as Allele specific expression
 
 
 
