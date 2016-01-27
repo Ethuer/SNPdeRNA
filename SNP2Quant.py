@@ -1,14 +1,25 @@
 import csv
-##from _functions import csv2dict
-##import _functions
 from sklearn import svm
 import numpy as np
-##import random
 import sys,argparse
 import os.path
-##from _functions import writevcfheader
 from _functions import *
-# this script takes the output from the BAM2SNP file and filters the noise. THe output of this one has to be vcf-like
+
+###################################################################################################################################################
+#
+#                                           Part 2 of the ALLELE SPECIFIC EXPRESSION PIPELINE
+#
+#
+#
+#
+#                this script takes the output from the SAM2SNP file and filters the noise. The output of this one has to be vcf-like
+#
+#
+####################################################(c) ERNST THUER 2015 ##########################################################################
+
+
+
+# 
 #CHROM POS    ID        REF  ALT     QUAL FILTER INFO                              FORMAT      Sample1        Sample2        Sample3
 
 
@@ -82,16 +93,18 @@ parser.add_argument('-fasta',
                     dest='fasta',
                     required = False,
                     default = 'none',
-                    help='gamma value for SVM fitting,  defaults to 0.01',
+                    help='Input a fasta file, that will be masked for remapping',
                     metavar = 'FILE',
                     )
 parser.add_argument('-fastaOut',
                     dest='fastaOut',
                     required = False,
                     default = 'none',
-                    help='gamma value for SVM fitting,  defaults to 0.01',
+                    help='Output a fasta file, that will have been masked for remapping',
                     metavar = 'FILE',
                     )
+
+
 
 args = parser.parse_args()
 
@@ -106,7 +119,7 @@ with open('%s' %(args.rep1),'r') as in_raw,  open('%s' %(args.out),'w') as out_r
 
     if len(inDict1) == 0:
         exit
-        print '[ERROR] Read the replicate 1 incorrectly, please veryfy that the format is correct'
+        print '[ERROR] Read the replicate 1 incorrectly, please verify that the format is correct, and the file exists'
     
     try:
         with open('%s' %(args.rep2),'r') as in_2raw:
@@ -114,7 +127,7 @@ with open('%s' %(args.rep1),'r') as in_raw,  open('%s' %(args.out),'w') as out_r
             inDict2 = csv2dictIncSyn(infile2)
     except:
         inDict2 = 0
-        print '[OPEN] No replicate 2,  no problem'
+        print '[OPEN] No replicate 2 ?  not optimal  Valiadation of SNP expression is going to be limited '
         pass
 
     try:
@@ -124,7 +137,7 @@ with open('%s' %(args.rep1),'r') as in_raw,  open('%s' %(args.out),'w') as out_r
 
     except:
         inDict3 = 0
-        print '[OPEN] No replicate 3, no problem'
+        print '[OPEN] No replicate 3 ?  no problem   This should not heavily decrease predictive power'
         pass
     
     print '[OPEN] All files loaded and ready'
@@ -152,51 +165,23 @@ with open('%s' %(args.rep1),'r') as in_raw,  open('%s' %(args.out),'w') as out_r
     wrong_count = 0
     origin = 'ENSEMBL'
     
-##    for row in gfffile:
-##        try:
-##            gene = row[8].split('"')[1]
-##            gffDict[gene]=row[0]
-##        except:
-##            pass
         
     writevcfheader(writeout, outfile)
 
 
     gffDict = parse_gff(gfffile,origin)
-##    for row in gfffile:
-####        print row
-##        # skip header
-##        if not '#' in row[0]:
-##            try:
-##                if row[2] == args.feature:
-##                    if not origin =='ENSEMBL':
-##                # legacy,  this has to be more flexible
-##                        gffDict[row[0],row[8].split('"')[1]] = [row[3],row[4],row[6],row[2]]
-##                    if origin == 'ENSEMBL':
-##                        name = re.split('=|;',row[8])[2]
-##                        gffDict[name] = [row[0]]
-##            except:
-####                print 'wrong gff configuration in %s' %(row[0])
-##                pass
-##    print "gff file with %s features" %(len(gffDict))
 
-    
-##    print len(inDict), len(inDict2),len(inDict3)
-##    make dictionary from csv reader objects
-
-    # write the binning function
-
-
-
-    masterDict = populateMasterDict(inDict1,inDict2,inDict3)        
-
-    print '[STATUS] Creating and populating Dictionary'
 
     # Populate the master dictionary
+    masterDict = populateMasterDict(inDict1,inDict2,inDict3)        
+
+    print '[STATUS] Creating and populating Dictionaries'
+
+    
     for repeat in range(0,20):
         extendMasterDict(masterDict,inDict1,inDict2,inDict3)
 
-    print '[STATUS] Masterdict with %s entries' %(len(masterDict))
+    print '[STATUS] Master Dictionary with %s possible entries' %(len(masterDict))
 
 
 
@@ -258,8 +243,8 @@ with open('%s' %(args.rep1),'r') as in_raw,  open('%s' %(args.out),'w') as out_r
         noiseArray = np.vstack([noiseArray,values])
 
     # keep gamma in auto
-    noiseModel = svm.OneClassSVM(nu=0.1, kernel="poly",verbose=True,cache_size=2000.0)
-
+    noiseModel = svm.OneClassSVM(nu=0.1, kernel="poly",verbose=False,cache_size=2000.0)
+    
     noiseModel.fit(noiseArray)
     writtenlist = []
     writecount = 0
@@ -293,11 +278,17 @@ with open('%s' %(args.rep1),'r') as in_raw,  open('%s' %(args.out),'w') as out_r
     print '[STATUS] %s  SNPs written to file' %(writecount)
 
     # now mask a fasta with this information
-    if args.fasta:
-        with open('%s'%(args.gff),'r') as fasta_raw:
-            record_dict = SeqIO.index('%s' %(args.fasta), "fasta")
-            print '[STATUS] Silencing the fasta sequence'
-            MaskAFasta(resDict,record_dict)
+    try:
+        if args.fasta != 'none':
+            with open('%s'%(args.gff),'r') as fasta_raw:
+                record_dict = SeqIO.index('%s' %(args.fasta), "fasta")
+                print '[STATUS] Silencing the fasta sequence'
+                MaskAFasta(resDict,record_dict)
+                print '[STATUS] Masked Fasta generated'
+        if args.fasta =='none':
+            print '[STATUS] No masked Fasta generated'
+    except:
+        print '[STATUS] No masked Fasta generated'
         
 
 

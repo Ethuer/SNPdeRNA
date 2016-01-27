@@ -18,7 +18,7 @@ import os.path
 
 # arguments for commandline input and help
 ####################################################
-parser = argparse.ArgumentParser(description='Looking for SNPs in RNAseq data. ')
+parser = argparse.ArgumentParser(description='Looking for SNPs in RNAseq data. This part accepts SAM or BAM input files, mapped against an available reference. In a first step it counts the occurrances of Polymorphisms against a reference. In second pass mode, only already detected SNPs are being analyzed')
 
 
 
@@ -104,7 +104,7 @@ with open("%s" %(args.fasta), "rU") as fasta_raw, open("%s"%(args.gtf),"r") as g
     resultDict ={}
     SNPDict = {}
     writecount = 0
-    origin = 'OTHER'
+    origin = 'SGD'
 
     print '[STATUS] Initiating gff parsing'
     gffDict = parse_gff(gff_file, origin,args.feature)
@@ -139,8 +139,14 @@ with open("%s" %(args.fasta), "rU") as fasta_raw, open("%s"%(args.gtf),"r") as g
                 getPercentage(genecount,len(gffDict),args.feature,perc_list)
                 
 ##                print '%s genes' %(genecount)
+                
+                
+##                try:
+   
                 resultDict[gene]= flexpile(fastadict,samfile.pileup("%s" %(element.id),start,stop),element.id, start, stop, args.spass)
-
+##                except:
+##                    print "[FAIL] Failed to invoke %s" %(gene)
+##                
                 # create the syn / nonsyn differentiation directly in the classification loop should be fastest
                 # this loop writes the output
 
@@ -184,11 +190,14 @@ with open("%s" %(args.fasta), "rU") as fasta_raw, open("%s"%(args.gtf),"r") as g
                             altprot = list2dict(altprot[0:len(protein)],0)
 
                             protposition = int((sub_element-start)/3)
-                            if protein[protposition] != altprot[protposition]:
-                                positionList.append(sub_element)
-                                synonym = 'NonSynon'
-                            if protein[protposition] == altprot[protposition]:
-                                synonym = 'Syn'
+                            try:
+                                if protein[protposition] != altprot[protposition]:
+                                    positionList.append(sub_element)
+                                    synonym = 'NonSynon'
+                                if protein[protposition] == altprot[protposition]:
+                                    synonym = 'Syn'
+                            except:
+                                synonym = 'Unknown'
 
                             # correct against python specific error of starting count at 0. 
 

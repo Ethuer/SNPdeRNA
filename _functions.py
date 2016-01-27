@@ -57,22 +57,31 @@ def findSyn(position_in_prot,vcfposition,altnucleotide,start):
 
 def parse_gff(gff_file, origin,feature='gene'):
     """
-    Parse a gff file,  extend this to encompass USCS /  SGD/CGD IDs  
+    Parse a gff file,  extend this to encompass USCS /  SGD/CGD IDs
+    'gene' is default
     """
     gffDict = {}
+    
     for row in gff_file:
         if not '#' in row[0]:
             try:
                 if row[2] == feature:
                     
-                    if not origin =='ENSEMBL':
-                # legacy,  this has to be more flexible
-                
-                        gffDict[row[0],row[8].split('"')[1]] = [row[3],row[4],row[6],row[2]]
-                        
+                    # add more formats as options for GFF / GTF parsing
+
                     if origin == 'ENSEMBL':
                         name = re.split('=|;',row[8])[2]
                         gffDict[row[0],name] = [row[3],row[4],row[6],row[2]]
+
+                    elif origin == 'SGD':
+                        ident  = row[8].split(';')[0]
+                        name = ident.split('=')[1]
+                        
+                        gffDict[row[0],name] = [row[3],row[4],row[6],row[2]]
+                    else:
+                # legacy,  this has to be more flexible
+                        gffDict[row[0],row[8].split('"')[1]] = [row[3],row[4],row[6],row[2]]
+                            
             except:
 ##                print 'wrong gff configuration in %s' %(row[0])
                 pass
@@ -357,19 +366,16 @@ finding the second largest item
 
 def getPercentage(number, total, feature, percList):
     percent = ((float(number) / float(total))*100)
-    
-    if percent % 10 < 1:
+    decadic_percent = round(percent,0)
+    if decadic_percent % 10 < 0.5:
         
         if percent > 9:
-            decadic_percent = round(percent,1)
-            if not decadic_percent in percList:
-                decadic_percent = int(decadic_percent)
+            
+            if str(decadic_percent) not in percList:
                 print "[STATUS] %s percent of %ss analyzed " %(decadic_percent,feature)
-                try:
-                    percList[decadic_percent]
-                except:
-                    pass
-        return percList
+                percList.append(str(decadic_percent))
+
+    return percList
 
 ### outdated functions
 
