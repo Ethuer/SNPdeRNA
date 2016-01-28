@@ -7,6 +7,102 @@ import random
 from Bio.Alphabet import IUPAC
 
 
+##def checkSynonymity(Dictionary):
+##    """
+##    Validate classification of genetic code to identify Synonymous SNPs or nonsynonoymous SNPs
+##
+##    Input is a Dictionary, containing flexpile() output of SNPs per gene for multiple genes / locations
+##    """ 
+##    
+##    for element, value in Dictionary.items():
+##        converted = classifydict(value)
+##
+##        for nucleotide, valuen in converted.items():
+##            if int(valuen[0]) > 0 and float(valuen[2]) < float(args.minqual):
+##                count +=1
+##
+##
+##                            # now check for synonymity,  move this to functions
+##                alternativeSeq = MutableSeq(str(element.seq[start:stop]), generic_dna)
+####                            print nucleotide
+##                alternativeSeq = mutateSequence(alternativeSeq,sub_element,nucleotide,start)
+##                alternativeSeq = Seq(str(alternativeSeq), generic_dna)
+##                    if len(alternativeSeq)%3 != 0:
+##                        overlap = len(alternativeSeq)%3
+##                        alternativeSeq = alternativeSeq[:-int(overlap)]
+##                            
+##                    altprot = alternativeSeq.translate()
+##                    altprot = list2dict(altprot[0:len(protein)],0)
+##
+##                    protposition = int((sub_element-start)/3)
+##                    try:
+##                        if protein[protposition] != altprot[protposition]:
+##                            positionList.append(sub_element)
+##                            synonym = 'NonSynon'
+##                        if protein[protposition] == altprot[protposition]:
+##                            synonym = 'Syn'
+##                    except:
+##                        synonym = 'Unknown'
+##
+##    return 
+def varNegBin(r,p):
+    """
+    get the variance of the Negative Binomial Distribution 
+    """
+    variance = (r*(1-p))/(p*p)
+    return variance
+
+def pmfNegBin(total,observ,prob, additive = True):
+    """
+    input
+    Total       : total number of measurements
+    Observ      : number of observations of bernoulli outcome
+    Probe       : likelyhood for observation
+    additive    : Cumulativity for pmf. Make it one sided by adding the lower observation probabilities, this changes the question to prob of n =< obs
+
+    
+    Calculates probability Mass function for the negative binomial distribution
+    A parametric approach to validate likelyhood of false claims.
+    If prob is fixed on technical limitations, multiplicity correction of obtained p values may be necessary...
+    """
+    
+    obsnew = int(observ - 1)
+    totnew = int(total - 1)
+
+    pmfProb = 0
+
+    if additive == True:
+        startPoint = 0
+        correctingAddition = 0
+    if additive == False:
+        startPoint = obsnew
+        correctingAddition = 1
+
+    for obs in range(startPoint,obsnew):
+        obs = obs + correctingAddition
+        if obsnew < 0:
+            obsnew = 0
+
+        if total == observ:
+            bindiv = 600
+        
+        else:
+            a = math.factorial(totnew)
+            b = math.factorial(obsnew)
+            c = math.factorial(totnew-observ)
+            bindiv = a // (b * c)
+        
+        term1 = math.pow(prob,(total-observ))
+        antiprob = float(1-prob)
+        term2 = math.pow(antiprob,observ)
+        arg = bindiv*term1*term2
+        pmfProb = pmfProb + arg
+    
+
+    if pmfProb > 1:
+        pmfProb = 1.0
+    return pmfProb
+
 
 
 

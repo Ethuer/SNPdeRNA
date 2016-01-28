@@ -167,6 +167,15 @@ with open("%s" %(args.fasta), "rU") as fasta_raw, open("%s"%(args.gtf),"r") as g
                     protein = list2dict(protein[0:len(protein)],0)
                 except:
                     print 'Error in translating Protein %s' %(element.id)
+
+
+
+
+##                try:
+##                    checkSynonymity(resultDict[gene])
+##
+##                except:
+##                    pass
                 
                 positionList = []
                 for sub_element, value in resultDict[gene].items():
