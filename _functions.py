@@ -5,6 +5,33 @@ import operator
 import random
 # Funtions for the RNAseq SNP expression 
 from Bio.Alphabet import IUPAC
+import math
+
+
+def likelihoodTest(subDictionary, masterDictionary, probability = 0.98, minCoverage = 100):
+    """
+    Function takes the subdictionaries provided by the individual samples, and tests them against the likelihood / pmf of the NegBin Distribution
+    """
+    for key, value in subDictionary.items():
+        
+
+
+            ### probability needs to be flexible
+        probability = float(probability)
+            
+        total = int(value[3])
+        observations = int(value[2])
+            # penalize lack of coverage
+        if int(total) < minCoverage:
+            total = minCoverage
+                
+            
+        likelihood = pmfNegBin(total,observations,probability, True)
+
+        repeatedcoverage = masterDictionary[key][0] + 1
+        masterDictionary[key] = [repeatedcoverage , likelihood]
+        
+    return masterDictionary
 
 
 ##def checkSynonymity(Dictionary):
@@ -66,8 +93,8 @@ def pmfNegBin(total,observ,prob, additive = True):
     If prob is fixed on technical limitations, multiplicity correction of obtained p values may be necessary...
     """
     
-    obsnew = int(observ - 1)
-    totnew = int(total - 1)
+    obsdf = int(observ - 1)
+    totdf = int(total - 1)
 
     pmfProb = 0
 
@@ -75,28 +102,38 @@ def pmfNegBin(total,observ,prob, additive = True):
         startPoint = 0
         correctingAddition = 0
     if additive == False:
-        startPoint = obsnew
+        startPoint = (obsdf - 1)
         correctingAddition = 1
 
-    for obs in range(startPoint,obsnew):
-        obs = obs + correctingAddition
-        if obsnew < 0:
-            obsnew = 0
+    for obs in range(startPoint,obsdf):
+        if pmfProb < 0.1:
+            
+            obs = obs + correctingAddition
+            if obsdf < 0:
+                obsdf = 0
 
-        if total == observ:
-            bindiv = 600
+            if total == observ:
+                bindiv = 600
         
-        else:
-            a = math.factorial(totnew)
-            b = math.factorial(obsnew)
-            c = math.factorial(totnew-observ)
-            bindiv = a // (b * c)
-        
-        term1 = math.pow(prob,(total-observ))
-        antiprob = float(1-prob)
-        term2 = math.pow(antiprob,observ)
-        arg = bindiv*term1*term2
-        pmfProb = pmfProb + arg
+            else:
+
+                # is that still correct ??
+                a = math.factorial(totdf)
+                b = math.factorial(obsdf)
+                c = math.factorial(totdf-observ)
+                bindiv = a // (b * c)
+
+    
+            
+            term1 = math.pow(prob,(total-observ))
+            antiprob = float(1-prob)
+            term2 = math.pow(antiprob,observ)
+            try:
+                arg = bindiv*term1*term2
+                pmfProb = pmfProb + arg
+            except:
+                pass
+            # for deep coverage, the terms can gets too big  
     
 
     if pmfProb > 1:
@@ -617,10 +654,9 @@ def add2masterDict(indict, masterdict):
     """
     Extend the MasterDictionary to contain all possible SNPs
     """
-    fpDict = {}
     try:
         for element, values in indict.items():
-            masterdict[element] = []
+            masterdict[element] = [0,0,0]
     except:
         pass
     return masterdict
