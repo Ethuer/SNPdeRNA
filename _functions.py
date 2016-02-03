@@ -79,14 +79,15 @@ def varNegBin(r,p):
     variance = (r*(1-p))/(p*p)
     return variance
 
-def pmfNegBin(total,observ,prob, additive = True):
+
+
+
+def pmfNegBin(total,observ,prob):
     """
     input
     Total       : total number of measurements
     Observ      : number of observations of bernoulli outcome
-    Probe       : likelyhood for observation
-    additive    : Cumulativity for pmf. Make it one sided by adding the lower observation probabilities, this changes the question to prob of n =< obs
-
+    Prob        : likelyhood for observing an Observ
     
     Calculates probability Mass function for the negative binomial distribution
     A parametric approach to validate likelyhood of false claims.
@@ -95,52 +96,43 @@ def pmfNegBin(total,observ,prob, additive = True):
     
     obsdf = int(observ - 1)
     totdf = int(total - 1)
+    failures = int(total) - int(observ)
 
-    pmfProb = 0
-
-    if additive == True:
-        startPoint = 0
-        correctingAddition = 0
-    if additive == False:
-        startPoint = (obsdf - 1)
-        correctingAddition = 1
-
-    for obs in range(startPoint,obsdf):
-        if pmfProb < 0.1:
-            
-            obs = obs + correctingAddition
-            if obsdf < 0:
-                obsdf = 0
-
-            if total == observ:
-                bindiv = 600
+    if failures > 0:
+        failuresdf = failures - 1
+    elif failures == 0:
+        failuresdf = 0
         
-            else:
 
-                # is that still correct ??
-                a = math.factorial(totdf)
-                b = math.factorial(obsdf)
-                c = math.factorial(totdf-observ)
-                bindiv = a // (b * c)
+    if obsdf < 0:
+        obsdf = 0
 
+
+    a = math.factorial(totdf)
+    b = math.factorial(obsdf)
+    c = math.factorial(total-observ)
+    bindiv = a // (b * c)
+
+    term1 = math.pow(prob,(observ))
+    antiprob = float(1-prob)
+    term2 = math.pow(antiprob,(failures))
+    arg = float(bindiv)*term1*term2
+
+    return arg
+
+
+def distFunNegBin(total,observ,prob):
+    """
+    extend the pmf function into a distribution function
+    adding a sum over all failures
+    """
+    failures = (total - observ)
+    distProb = 0
+    for f in range(0,failures):
+        newtotal = (f + observ)
+        distProb = distProb + pmfNegBin(newtotal,observ,prob)
+    return distProb
     
-            
-            term1 = math.pow(prob,(total-observ))
-            antiprob = float(1-prob)
-            term2 = math.pow(antiprob,observ)
-            try:
-                arg = bindiv*term1*term2
-                pmfProb = pmfProb + arg
-            except:
-                pass
-            # for deep coverage, the terms can gets too big  
-    
-
-    if pmfProb > 1:
-        pmfProb = 1.0
-    return pmfProb
-
-
 
 
 def mutateSequence(sequence,vcfposition,altnucleotide,start):
