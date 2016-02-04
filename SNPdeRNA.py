@@ -116,7 +116,7 @@ args = parser.parse_args()
 #####################################################
 
 with open("%s" %(args.fasta), "rU") as fasta_raw, open("%s"%(args.gtf),"r") as gff_raw, open('%s' %(args.out),'w') as out_raw:
-    print '[IMPORT] Loading BAM File'
+    print '[IMPORT] Loading BAM File %s' %(args.bam1)
     
     print '[IMPORT] Loading Fasta file %s' %fasta_raw
     print '[IMPORT] Loading GFF/GTF File %s ' %(gff_raw)
@@ -124,8 +124,10 @@ with open("%s" %(args.fasta), "rU") as fasta_raw, open("%s"%(args.gtf),"r") as g
     
     gff_file = csv.reader(gff_raw, delimiter = '\t')
     outfile = csv.writer(out_raw, delimiter = '\t')
-
-
+    cutoff = 0.05
+    origin = args.origin
+    createIntermediate = False
+    
     print '[STATUS] Initiating gff parsing'
     gffDict = parse_gff(gff_file, origin,args.feature)
     if (len(gffDict)) == 0:
@@ -136,20 +138,32 @@ with open("%s" %(args.fasta), "rU") as fasta_raw, open("%s"%(args.gtf),"r") as g
 
 
     # Starting SNPdeRNA,     First step,  open files
-    SAMList = [samfile1]
+    SAMList = []
 
-    if len(samfile1) == 0:
+
+    # one BAM file is essential
+    ## CATCH EXCEPTION for missing indexing file
+
+    try:
         samfile1 = pysam.AlignmentFile("%s" %(args.bam1),"rb")
+##    print len(samfile1)
+        samDict1 = {}
         
+        SAMList = [samDict1]
+        samDict1 = SAM2SNP(args.feature,fasta_raw,samfile1,gffDict,outfile,cutoff,args.spass, createIntermediate)
+        
+    except :
         print '[ERROR] Read the replicate 1 incorrectly, please verify that the format is correct, and the file exists'
         exit
+
         
+    
     
     try:
 ##        with open('%s' %(args.bam2),'r') as in_2raw:
         samfile2 = pysam.AlignmentFile("%s" %(args.bam2),"rb")
         samDict2 = {}
-        samDict2 = SAM2SNP(args.feature,fasta_raw,samfile,gffDict,outfile, createIntermediate)
+        samDict2 = SAM2SNP(args.feature,fasta_raw,samfile2,gffDict,outfile,cutoff,args.spass, createIntermediate)
         SAMList.append(samDict2)
     except:
         samDict2 = 0
@@ -160,7 +174,7 @@ with open("%s" %(args.fasta), "rU") as fasta_raw, open("%s"%(args.gtf),"r") as g
 ##        with open('%s' %(args.bam3),'r') as in_3raw:
         samfile3 = pysam.AlignmentFile("%s" %(args.bam3),"rb")
         samDict3 = {}
-        samDict3 = SAM2SNP(args.feature,fasta_raw,samfile,gffDict,outfile, createIntermediate)
+        samDict3 = SAM2SNP(args.feature,fasta_raw,samfile3,gffDict,outfile,cutoff,args.spass, createIntermediate)
         SAMList.append(samDict3)
 
     except:
@@ -168,27 +182,6 @@ with open("%s" %(args.fasta), "rU") as fasta_raw, open("%s"%(args.gtf),"r") as g
 ##        print '[OPEN] No replicate 3 ?  no problem   This should not heavily decrease predictive power'
         pass
 
-##    gffDict = {}
-##    basecount = 0
-##    genecount = 0
-##    writecount = 0
-##    origin = 'SGD'
-##    createIntermediate == True
-
-    # dictionary for transitioning the SAM2SNP output to the Quantification 
-    
-
-##
-##    SNPDict = SAM2SNP(args.feature,fasta_raw,samfile,gffDict,outfile, createIntermediate)
-##
-##    
-
-
-    # reapply
-    if createIntermediate == True:
-        outfile.writerow([gene, truepos, value[0], nucleotide, valuen[0],valuen[1],valuen[2],synonym])
-        writecount += 1
-                                
-
-
-    
+    print len(samDict1)
+    for element, value in samDict1.items():
+        print element, value

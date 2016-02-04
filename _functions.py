@@ -96,6 +96,8 @@ def pmfNegBin(total,observ,prob):
     
     obsdf = int(observ - 1)
     totdf = int(total - 1)
+    if totdf < 1:
+        totdf = 1
     failures = int(total) - int(observ)
 
     if failures > 0:
@@ -116,7 +118,11 @@ def pmfNegBin(total,observ,prob):
     term1 = math.pow(prob,(observ))
     antiprob = float(1-prob)
     term2 = math.pow(antiprob,(failures))
-    arg = float(bindiv)*term1*term2
+    try:
+        arg = float(bindiv)*term1*term2
+    except:
+        arg = 0
+##        print 'Error in evaluating %s   %s  ' %(observ, total)
 
     return arg
 
@@ -127,6 +133,7 @@ def distFunNegBin(total,observ,prob):
     adding a sum over all failures
     """
     failures = (total - observ)
+    failures = int(failures)
     distProb = 0
     for f in range(0,failures):
         newtotal = (f + observ)
@@ -429,14 +436,19 @@ write non-empty lists do dictionaries
 
 
 
-def classifydict(resDict_line):
+def classifydict(resDict_line,ErrorExpect, probabilityCutoff, mincount):
     """
-resDict, so far , contains the information of expression of different nucleotides
+THe analysis, so far contains the information of expression of different nucleotides, for each nucleotide
 check if any of the nucleotides is expressed sufficiently, and write this as a SNP
 Just compare reference,  most likely SNP and probability that this is at least heterozygous
     """
     snpDict = {}
     inDict = {}
+
+    ErrorExpect = float(ErrorExpect)
+    probabilityCutoff = float(probabilityCutoff)
+    mincount = int(mincount)
+
     
     base = resDict_line[0]
     inDict['basecount'] = resDict_line[5]
@@ -447,31 +459,43 @@ Just compare reference,  most likely SNP and probability that this is at least h
     
 ##    allcount = sum(inDict.itervalues())
     allcount = (inDict['G'] + inDict['A'] + inDict['T'] + inDict['C'] + inDict['basecount'])
-    
+
+
+    if allcount > int(mincount):
     # in case this is a secondpass, one of the nucleotides is larger than basecount
-    most_likely = max(inDict.iteritems(), key=operator.itemgetter(1))[0]
-    second = secondlargest(most_likely,inDict)
+        most_likely = max(inDict.iteritems(), key=operator.itemgetter(1))[0]
+        second = secondlargest(most_likely,inDict)
     
 
-    # p is misscallchance for illumina..   lets say 1 (0.01) for the moment, can make this more flexible
-    prob = stats.binom_test( inDict[most_likely],allcount, p=0.01)
-    prob_2 = stats.binom_test( inDict[second],allcount, p=0.01)
+    # p is misscallchance for illumina..   1.4% for the moment, can make this more flexible
+    # use negative binomial density function instead of binom.test
+
+## legacy functionality   
+####    prob = stats.binom_test( inDict[most_likely],allcount, p=0.01)
+####    prob_2 = stats.binom_test( inDict[second],allcount, p=0.01)
 
     
-    # build the output dictionary for the best and secondbest value
-    # THIS IS TWOSIDED,   make it onesided, or its useless...
-    mean = stats.binom.mean(allcount, p=0.01)
-    stdev = stats.binom.std(allcount, p=0.01)
-    minimum = (mean - (stdev*1.96))
-    
-    # build the output dictionary for the best and secondbest value
-    # THIS IS TWOSIDED,   make it onesided, or its useless...
-    if float(inDict[most_likely]) >= minimum and most_likely != 'basecount':
-        snpDict[most_likely]=[inDict[most_likely],allcount,prob]
+        prob = distFunNegBin(allcount,inDict[most_likely],0.014)
+        prob2 = distFunNegBin(allcount,inDict[second],0.014)
 
-    if float(inDict[second]) >= minimum and second != 'basecount':
-        snpDict[second]=[inDict[second],allcount,prob_2]    
-    
+        if prob < probabilityCutoff and most_likely != 'basecount':
+            snpDict[most_likely]=[inDict[most_likely],allcount,prob]
+        if prob2 < probabilityCutoff and second != 'basecount':
+        # an alternative second choice, in case both alleles mutated away from the reference,  or the organism is
+            snpDict[second] = [inDict[second],allcount,prob2]
+
+####    
+####    # build the output dictionary for the best and secondbest value
+####    # THIS IS TWOSIDED,   make it onesided, or its useless...
+####    mean = stats.binom.mean(allcount, p=0.01)
+####    stdev = stats.binom.std(allcount, p=0.01)
+####    minimum = (mean - (stdev*1.96))
+##    if float(inDict[most_likely]) >= minimum and most_likely != 'basecount':
+##        snpDict[most_likely]=[inDict[most_likely],allcount,prob]
+##
+##    if float(inDict[second]) >= minimum and second != 'basecount':
+##        snpDict[second]=[inDict[second],allcount,prob_2]    
+
     return snpDict
 
 
