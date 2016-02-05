@@ -70,10 +70,11 @@ def SAM2SNP(feature,fasta_raw,samfile,gffDict,outfile,cutoff ,spass, createInter
                         
                         protein = DNA.translate()
                         protein = list2dict(protein[0:len(protein)],0)
+                        DNADict = list2dict(DNA[0:len(DNA)],0)
                     except:
                         print 'Error in translating Protein %s' %(element.id)
 
-
+                    
 ##                    alternativeSeq = MutableSeq(str(element.seq[start:stop]), generic_dna)
 ##                    alternativeSeq = mutateSequence(alternativeSeq,gene,nucleotide,start)
 ##                    alternativeSeq = Seq(str(alternativeSeq), generic_dna)
@@ -104,8 +105,10 @@ def SAM2SNP(feature,fasta_raw,samfile,gffDict,outfile,cutoff ,spass, createInter
                                 SNPcov = possibleContent[0]
                                 Basecov = possibleContent[1]
                                 DensfunProb = possibleContent[2]
-
-                                synonym = synonymity(protein,alternativeSeq, position, ALT,int(value[0]) )
+                                # check position within gene,   position - start
+                                synonym = 'Not analyzed'
+                                synonym = getProt( position, protein,DNADict,ALT,int(value[0]))
+##                                synonym = synonymity(protein,alternativeSeq, position, ALT,int(value[0]) )
                                 position = int(position) + 1
                                 
                                 identity = [gene,position]
@@ -119,6 +122,53 @@ def SAM2SNP(feature,fasta_raw,samfile,gffDict,outfile,cutoff ,spass, createInter
                                         transDict[identity] = [ORIG,ALT,SNPcov,Basecov,DensfunProb,synonym]
 
         return transDict
+
+def findCodon(NuclPos, ALT, Modulo, sequenceDict):
+        """
+        Could be simplified, but that is quite self explanatory.
+        recreate the new codon, translate.
+
+        Modulo 0,   posiiton divisible by 3, so SNP is in the 0 position. Memento Python .
+        Modulo 1,   position has 1 residue, so SNP is at pos 1 == 2nd posiion on codon.
+        """
+        codon = ['N','N','N']
+        if Modulo == 0:
+                codon[0] = ALT
+                codon[1] = sequenceDict[(int(NuclPos)+1)]
+                codon[2] = sequenceDict[(int(NuclPos)+2)]
+
+        if Modulo == 1:
+                codon[0] = sequenceDict[(int(NuclPos)-1)]
+                codon[1] = ALT
+                codon[2] = sequenceDict[(int(NuclPos)+1)]
+
+        if Modulo == 2:
+                codon[0] = sequenceDict[(int(NuclPos)-2)]
+                codon[1] = sequenceDict[(int(NuclPos)-1)]
+                codon[2] = ALT             
+
+        return codon
+        
+
+
+def getProt(position, origDNADict,seqDict, nucleotide, start ):
+        nucposition = int(position-start)
+        protposition = ((nucposition)/3)
+
+        Mod = nucposition%3
+        Codon = findCodon(nucposition, nucleotide, Mod, seqDict)
+        Codon = ''.join(Codon)
+        Codon = Seq(str(Codon), generic_dna)
+
+        if str(origDNADict[protposition]) == str(Codon.translate()):
+                SYN = 'Syn'
+        else:
+                SYN = 'Nonsyn'
+        
+
+
+
+        
 
 def synonymity(DNA,ALTSEQ, position,nucleotide,startofprotein):
         """
