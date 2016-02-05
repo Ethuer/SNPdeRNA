@@ -203,6 +203,10 @@ with open('%s' %(args.rep1),'r') as in_raw,  open('%s' %(args.out),'w') as out_r
     for element in DictList:
         
         masterDict = likelihoodTest(element, masterDict)
+        
+
+
+    # run additional classification for SNPs on both alleles.
 
 ##
     # now classify according to probability,  use this as an output in pass 1 ,

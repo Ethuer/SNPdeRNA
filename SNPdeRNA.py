@@ -1,6 +1,6 @@
 import csv
-from sklearn import svm
-import numpy as np
+##from sklearn import svm
+##import numpy as np
 import sys,argparse
 import os.path
 from _functions import *
@@ -14,6 +14,9 @@ import re
 import csv
 import sys,argparse
 import os.path
+
+
+import thread
 
 # Unification of the 2 remaining scripts,
 # add the SAM2SNP first, move as much as possible to _functions
@@ -111,6 +114,14 @@ parser.add_argument('-minqual',
                     #type=argparse.FileType('w')
                     )
 
+parser.add_argument('-fastaOut',
+                    dest='fastaOut',
+                    required = False,
+                    default = 'none',
+                    help='Output a fasta file, that will have been masked for remapping',
+                    metavar = 'FILE',
+                    )
+
 args = parser.parse_args()
 
 #####################################################
@@ -140,27 +151,19 @@ with open("%s" %(args.fasta), "rU") as fasta_raw, open("%s"%(args.gtf),"r") as g
     # Starting SNPdeRNA,     First step,  open files
     SAMList = []
 
-
     # one BAM file is essential
     ## CATCH EXCEPTION for missing indexing file
 
     try:
         samfile1 = pysam.AlignmentFile("%s" %(args.bam1),"rb")
-##    print len(samfile1)
         samDict1 = {}
-        
         SAMList = [samDict1]
         samDict1 = SAM2SNP(args.feature,fasta_raw,samfile1,gffDict,outfile,cutoff,args.spass, createIntermediate)
-        
     except :
         print '[ERROR] Read the replicate 1 incorrectly, please verify that the format is correct, and the file exists'
         exit
-
-        
-    
     
     try:
-##        with open('%s' %(args.bam2),'r') as in_2raw:
         samfile2 = pysam.AlignmentFile("%s" %(args.bam2),"rb")
         samDict2 = {}
         samDict2 = SAM2SNP(args.feature,fasta_raw,samfile2,gffDict,outfile,cutoff,args.spass, createIntermediate)
@@ -171,17 +174,126 @@ with open("%s" %(args.fasta), "rU") as fasta_raw, open("%s"%(args.gtf),"r") as g
         pass
 
     try:
-##        with open('%s' %(args.bam3),'r') as in_3raw:
         samfile3 = pysam.AlignmentFile("%s" %(args.bam3),"rb")
         samDict3 = {}
         samDict3 = SAM2SNP(args.feature,fasta_raw,samfile3,gffDict,outfile,cutoff,args.spass, createIntermediate)
         SAMList.append(samDict3)
-
     except:
         samDict3 = 0
-##        print '[OPEN] No replicate 3 ?  no problem   This should not heavily decrease predictive power'
         pass
 
     print len(samDict1)
     for element, value in samDict1.items():
         print element, value
+
+
+
+    # Now starts the SNP2Quant part
+    # with the vcf like dictionaries loaded as samDict 1 to 3
+
+
+
+
+    resDict = {}
+    geneDict = {}
+    genecount = 0
+    posDict = {}
+##    noiseDict = {}
+##    outDict = {}
+
+
+    writeout = True
+    
+##    neg_count = 0
+##    pos_count = 0
+##    wrong_count = 0
+##    origin = 'SGD'
+    
+        
+##    writevcfheader(writeout, outfile)
+
+
+    # Populate the master dictionary
+    # This creates an empty dictionary containing all SNPs 
+    masterDict = populateMasterDict(samDict1,samDict2,samDict3) 
+
+
+
+    print '[STATUS] Creating and populating Dictionaries'
+##    for repeat in range(0,20):
+##        extendMasterDict(masterDict,inDict1,inDict2,inDict3)
+
+    print '[STATUS] Master Dictionary with %s possible SNPs' %(len(masterDict))
+
+
+    print '[STATUS] Initiating SNP classification and dispersion estimation'
+    for element in SAMList:
+
+        # here goes also the test for full SNPs
+        
+        masterDict = likelihoodTest(element, masterDict)
+
+    count = 0
+    count_all = 0
+
+    for element, value in masterDict.items():
+        
+        if value[1] > 0.05:
+            value.append('acceted')
+            count +=1
+            posDict[element] = value[0]
+            # outfile writer if firstpass,   not if secondpass
+        else :
+            value.append( 'rejected' )
+            count_all +=1
+##        print element, value
+    print count, count_all
+
+
+
+##
+##    writtenlist = []
+##    writecount = 0
+##    for element, value in posDict.items():
+##        # write the SNPs to file
+##        if element in inDict1:
+##            writtenlist.append(element)
+####            element[0] == gene,   element[1] == position
+##            outfile.writerow([element[0],element[1], inDict1[element][0],inDict1[element][1],inDict1[element][2],inDict1[element][3],inDict1[element][4],inDict1[element][5]])
+##            resDict[element] = [inDict1[element][0],inDict1[element][1]]
+##            writecount +=1               
+##        if inDict2 != 0 and element in inDict2 and element not in writtenlist:
+##            outfile.writerow([element[0],element[1], inDict2[element][0],inDict2[element][1],inDict2[element][2],inDict2[element][3],inDict2[element][4],inDict2[element][5]])
+##            writtenlist.append(element)
+##            resDict[element] = [inDict2[element][0],inDict2[element][1]]
+##            writecount +=1
+##        if inDict3 != 0 and element in inDict3 and element not in writtenlist:
+##            outfile.writerow([element[0],element[1], inDict3[element][0],inDict3[element][1],inDict3[element][2],inDict3[element][3],inDict3[element][4],inDict3[element][5]])
+##            writtenlist.append(element)
+##            resDict[element] = [inDict3[element][0],inDict3[element][1]]
+##            writecount+=1
+##                
+##
+##
+##
+##    print '[STATUS] %s  SNPs written to file' %(writecount)
+##
+####    # now mask a fasta with this information
+##    try:
+##        if args.fasta != 'none':
+##            with open('%s'%(args.gff),'r') as fasta_raw:
+##                record_dict = SeqIO.index('%s' %(args.fasta), "fasta")
+##                print '[STATUS] Silencing the fasta sequence'
+##                MaskAFasta(resDict,record_dict)
+##                print '[STATUS] Masked Fasta generated'
+##        if args.fasta =='none':
+##            print '[STATUS] No masked Fasta generated'
+##    except:
+##        print '[STATUS] No masked Fasta generated'
+##        
+####
+##
+##
+##    
+
+

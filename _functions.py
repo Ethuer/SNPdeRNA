@@ -135,9 +135,32 @@ def distFunNegBin(total,observ,prob):
     failures = (total - observ)
     failures = int(failures)
     distProb = 0
+
+
+    speedy = True
+
+    
     for f in range(0,failures):
+
+
+
+        
         newtotal = (f + observ)
         distProb = distProb + pmfNegBin(newtotal,observ,prob)
+##        print distProb
+        # add speedup by limiting distfunction
+
+        # Speedy is for significance threshold determination only.
+        # It will stop the loop at the threshold.
+
+        # since this is a very time consuming step for large coverage,  speedy will decrease runtime 20 fold without major drawbacks if it is only
+        # used for significance comparison
+
+        
+        if speedy == True:
+            if distProb > 0.06:
+                break
+        
     return distProb
     
 

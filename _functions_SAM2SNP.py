@@ -50,7 +50,7 @@ def SAM2SNP(feature,fasta_raw,samfile,gffDict,outfile,cutoff ,spass, createInter
                     start = int(value[0])
                     stop = int(value[1])
                     gene = key[1]
-                
+##                    print gene
                     fastadict = list2dict(element.seq[start:stop],start)
                              
                     genecount +=1
