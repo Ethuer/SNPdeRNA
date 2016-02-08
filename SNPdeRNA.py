@@ -18,6 +18,19 @@ import os.path
 
 import thread
 
+
+def SAMresultsCount(samDict1,samDict2,samDict3,verbose = True):
+    if verbose == True:
+        if samDict3 > 0:
+            print '[Status]  Bam files loaded with %s , %s , %s Preliminary SNPs read' %(len(samDict1), len(samDict2),len(samDict3))
+            exit
+        if samDict2 > 0:
+            print '[Status]  Bam files loaded with %s , %s Preliminary SNPs read' %(len(samDict1), len(samDict2))
+            exit
+        if samDict1 > 0:
+            print '[Status]  Bam files loaded with %s Preliminary SNPs read' %(len(samDict1))
+            exit
+
 # Unification of the 2 remaining scripts,
 # add the SAM2SNP first, move as much as possible to _functions
 
@@ -182,9 +195,11 @@ with open("%s" %(args.fasta), "rU") as fasta_raw, open("%s"%(args.gtf),"r") as g
         samDict3 = 0
         pass
 
-    print len(samDict1)
-    for element, value in samDict1.items():
-        print element, value
+##    print len(samDict1)
+##    for element, value in samDict1.items():
+##        print element, value
+    
+    SAMresultsCount(samDict1,samDict2,samDict3,verbose = True)
 
 
 
@@ -227,29 +242,77 @@ with open("%s" %(args.fasta), "rU") as fasta_raw, open("%s"%(args.gtf),"r") as g
 
 
     print '[STATUS] Initiating SNP classification and dispersion estimation'
-    for element in SAMList:
+
+    
+    ### THe dicitonary changes with the function pass to a string, instead of List
+
+    silenceDict = {}
+    for silencekey, silencecontent in masterDict.items():
+        
+        if '_' in silencekey[1]:
+            silencekey[1] = silencekey[1].split('_')[0]
+            print silencekey[1]
+        silenceDict[silencekey[1]] = silencekey[0]
+
+
+    print len(silenceDict)
+    # Start classifying SNPs as ASE, and mutate fasta
+
+    if args.spass == 'No' and args.fastaOut != 'none' :
+        print '[STATUS] Writing masked fasta file '
+        print '[STATUS] Please use this as a new reference to eleminate alignment derived errors'
+##        try:
+        if args.fasta != 'none':
+            with open('%s'%(args.fastaOut),'w') as fasta_raw:
+                record_dict = SeqIO.index('%s' %(args.fasta), "fasta")
+                print '[STATUS] Silencing the fasta sequence'
+                MaskAFasta(silenceDict,record_dict, fasta_raw)
+                print '[STATUS] Masked Fasta generated'
+        if args.fasta =='none':
+            print '[STATUS] No input FASTA file found'
+
+    # lets get to the quantification
+    
+
+##    if args.spass != 'No':
+        
+        
+
+
+    
+##        except:
+##            print '[STATUS] No masked Fasta generated'
+##        
+
+    
+##    if args.spass != 'No':
+##        
+
 
         # here goes also the test for full SNPs
+####        
+####        masterDict = likelihoodTest(element, masterDict)
+####
+####    count = 0
+####    count_all = 0
+####
+####    for element, value in masterDict.items():
+####        print element, value
+
         
-        masterDict = likelihoodTest(element, masterDict)
-
-    count = 0
-    count_all = 0
-
-    for element, value in masterDict.items():
-        
-        if value[1] > 0.05:
-            value.append('acceted')
-            count +=1
-            posDict[element] = value[0]
-            # outfile writer if firstpass,   not if secondpass
-        else :
-            value.append( 'rejected' )
-            count_all +=1
-##        print element, value
-    print count, count_all
-
-
+##        if value[1] > 0.05:
+##            print value
+##            value.append('accepted')
+##            count +=1
+##            posDict[element] = value[0]
+##            # outfile writer if firstpass,   not if secondpass
+##        else :
+##            value.append( 'rejected' )
+##            count_all +=1
+####        print element, value
+##    print count, count_all
+##
+##
 
 ##
 ##    writtenlist = []
@@ -296,4 +359,18 @@ with open("%s" %(args.fasta), "rU") as fasta_raw, open("%s"%(args.gtf),"r") as g
 ##
 ##    
 
+####class SNP(object):
+####    """
+####a Single Nucleotide polymorphism
+####Has
+####
+####baseclass
+####
+####Position  (gene, base)
+####has Original reference Nucleotide
+####has Alternative nucleotide
+####has likelihood to be noise  (negbin(0.014)
+####has likelihood to be homozygous (negbin (0.98))
+####has likelihood to be Allele specific negbin (0.5)
+####    """
 

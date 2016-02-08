@@ -8,6 +8,15 @@ from Bio.Alphabet import IUPAC
 import math
 
 
+def fullSNPdetect(subDictionary,probability = 0.98):
+    """
+Check if SNP is on both alleles,
+
+a reverse version of the significance test from earlier
+    """
+    
+
+
 def likelihoodTest(subDictionary, masterDictionary, probability = 0.98, minCoverage = 100):
     """
     Function takes the subdictionaries provided by the individual samples, and tests them against the likelihood / pmf of the NegBin Distribution
@@ -666,6 +675,14 @@ def allpile(sequenceDictionary, genePileup, geneName, start, stop,secondpass):
 
 def MaskAFasta (vcfDictionary, recordDictionary, outHandle ):
     """
+    vcfDictionary contains SNP results in vcf like format.
+    ## changed this to Silencedictionary
+
+    
+    recordDictionary contains Fasta sequences.
+    the outpu handle opens a new writable file
+
+    
     No reason to keep this as an independant script, attach to the Quantification Script.
     Maskafasta takes the results from SNP quantification, a fasta file and the direction for an out file ( an open handle)
     replaces the nucleotides specified in the vcf with 'N' to enable a more accurate remapping
@@ -675,17 +692,21 @@ def MaskAFasta (vcfDictionary, recordDictionary, outHandle ):
 
     fastaDict = {}
             
-    for elements, values in record_dict.items():
+    for elements, values in recordDictionary.items():
         seq_mutable = values.seq.tomutable()
         fastaDict[elements] = seq_mutable
 
-    for element, values in vcfDict.items():
+    for element, value in vcfDictionary.items():
+##        print element, values
 ##        The VCF file contains the absolute position of the SNP on the sequence, so just replace it with an N
-        fastaDict[element[0]][int(element[1])] = 'N'
-
+##        if '_alt' in 
+        try:
+            fastaDict[value][int(element)] = 'N'
+        except:
+            print value, element
     for element, value in fastaDict.items():
         out_seqs = SeqIO.SeqRecord((value), id = element)
-        SeqIO.write(out_seqs, out_raw, "fasta")
+        SeqIO.write(out_seqs, outHandle, "fasta")
             
 
 
