@@ -232,6 +232,8 @@ with open("%s" %(args.fasta), "rU") as fasta_raw, open("%s"%(args.gtf),"r") as g
     # This creates an empty dictionary containing all SNPs 
     masterDict = populateMasterDict(samDict1,samDict2,samDict3) 
 
+##    for karg, marg in masterDict.items():
+##        print karg, karg[0]
 
 
     print '[STATUS] Creating and populating Dictionaries'
@@ -271,11 +273,65 @@ with open("%s" %(args.fasta), "rU") as fasta_raw, open("%s"%(args.gtf),"r") as g
         if args.fasta =='none':
             print '[STATUS] No input FASTA file found'
 
+
+    
     # lets get to the quantification
+
+    # populate masterdict to randomized resampling ??
+
+    
     
 
-##    if args.spass != 'No':
+    if args.spass != 'No':
+        print '[STATUS] Initiate Quantification'
         
+        extendMasterDict(masterDict,samDict1,samDict2,samDict3)
+        
+    resDict = {}
+    total = 100
+    for masDictkey, masDictitems in masterDict.items():
+##        print masDictitems
+        resDict[masDictkey]={}
+        elementcount = 0
+        for element in masDictitems:
+
+            resDict[masDictkey] = {elementcount: []}
+
+
+            # Check if it is Noise
+            NoiseProb = distFunNegBin(100,int(element),0.02)
+
+
+            # Check if it is a full SNP
+            negative = total - int(element)
+
+            FullProb = distFunNegBin(100,negative,0.02)
+                        
+##            resDict[masDictkey] = {elementcount: ['FullSNP' ,FullProb]}
+            # Check for Allele Specific expression
+            ASEprob = pmfNegBin(total,element,0.5)
+            
+            resDict[masDictkey][elementcount].append(NoiseProb)
+            resDict[masDictkey][elementcount].append(ASEprob)
+            resDict[masDictkey][elementcount].append(FullProb)
+
+
+
+
+            
+            elementcount +=1
+
+##            
+    for resDictkey, resDictitems in resDict.items():
+        print resDictkey, resDictkey[0]
+        # now we run the auntification on those
+        # each element is n/100 * 5
+        # create a dictionary with the likelyhoods of joining, then add them up.
+        # 0.014 for noise  density
+        # 0.986 for Full SNPs
+        # use density of inverse count  ( count against)
+        # all else = ASE
+
         
 
 
@@ -365,7 +421,7 @@ with open("%s" %(args.fasta), "rU") as fasta_raw, open("%s"%(args.gtf),"r") as g
 ####Has
 ####
 ####baseclass
-####
+####Attributes:
 ####Position  (gene, base)
 ####has Original reference Nucleotide
 ####has Alternative nucleotide
@@ -373,4 +429,19 @@ with open("%s" %(args.fasta), "rU") as fasta_raw, open("%s"%(args.gtf),"r") as g
 ####has likelihood to be homozygous (negbin (0.98))
 ####has likelihood to be Allele specific negbin (0.5)
 ####    """
-
+####    def __init__(self,gene,position,ORIG,ALT,count,coverage,likelihoodNoise,likelihoodASE,likelihoodFullSNP):
+####        self.gene = gene
+####        self.position = position
+####        self.orig = ORIG
+####        self.alt = ALT
+####        self.count = count
+####        self.coverage = coverage
+####        self.likelihoodNoise = likelihoodNoise
+####        self.likelihoodASE = likelihoodASE
+####        self.likelihoodFullSNP = likelihoodFullSNP
+####
+####
+####        
+####    def nucleotide(ORIG, ALT)
+####        self
+####    

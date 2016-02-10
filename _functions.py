@@ -716,7 +716,8 @@ def add2masterDict(indict, masterdict):
     """
     try:
         for element, values in indict.items():
-            masterdict[element] = [0,0,0]
+            masterdict[[element[0],element[1]]] = []
+            masterdict
     except:
         pass
     return masterdict
@@ -736,13 +737,13 @@ def binning(inDict, masterDict):
             totalCoverage = int(inDict[element][3])
         elif element not in inDict:
             SNPs = 0
-            totalCoverage = 20
-        if totalCoverage < 20:
-            totalCoverage = 20
+            totalCoverage = 100
+        if totalCoverage < 100:
+            totalCoverage = 100
 
         count = 0
         # now create bins,  randomly draw from one sample 50 times (of whole coverage) and store how many SNPSs you get
-        for repeat in range(0, 50):
+        for repeat in range(0, 100):
             choice = random.randrange(0,int(totalCoverage))
             
             if choice < SNPs:
@@ -763,16 +764,13 @@ def extendMasterDict(masterDict,inDict1,inDict2=0,inDict3=0):
 
 
 
-    for fill in range(0,1):
+    for fill in range(0,5):
         if inDict2 !=0 and inDict3 !=0 :
             chosenOne = random.choice(['inDict1','inDict2','inDict3'])
         if inDict2 !=0 :
             chosenOne = random.choice(['inDict1','inDict2'])
         if inDict2 ==0 and inDict3 ==0:
             chosenOne = 'inDict1'
-
-        
-
 
         
            # take value from a random dictionary 
