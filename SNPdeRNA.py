@@ -154,6 +154,15 @@ with open("%s" %(args.fasta), "rU") as fasta_raw, open("%s"%(args.gtf),"r") as g
     
     print '[STATUS] Initiating gff parsing'
     gffDict = parse_gff(gff_file, origin,args.feature)
+    
+    # Create a conversion list between genes and chromosomes, for silencing of the fasta...
+    convDict = {}
+
+    for row in gffDict:
+        print row[0],row[1]
+        convDict[row[1]] = row[0]
+##    convDict = 
+    
     if (len(gffDict)) == 0:
         print "[STATUS] The gff/gtf file has 0 features,  check the files structure or the existence of the selected feature"
         exit 
@@ -167,14 +176,14 @@ with open("%s" %(args.fasta), "rU") as fasta_raw, open("%s"%(args.gtf),"r") as g
     # one BAM file is essential
     ## CATCH EXCEPTION for missing indexing file
 
-    try:
-        samfile1 = pysam.AlignmentFile("%s" %(args.bam1),"rb")
-        samDict1 = {}
-        SAMList = [samDict1]
-        samDict1 = SAM2SNP(args.feature,fasta_raw,samfile1,gffDict,outfile,cutoff,args.spass, createIntermediate)
-    except :
-        print '[ERROR] Read the replicate 1 incorrectly, please verify that the format is correct, and the file exists'
-        exit
+    
+    samfile1 = pysam.AlignmentFile("%s" %(args.bam1),"rb")
+    samDict1 = {}
+    SAMList = [samDict1]
+    samDict1 = SAM2SNP(args.feature,fasta_raw,samfile1,gffDict,outfile,cutoff,args.spass, createIntermediate)
+##    except:
+##    print '[ERROR] Read the replicate 1 incorrectly, please verify that the format is correct, and the file exists'
+##    exit
     
     try:
         samfile2 = pysam.AlignmentFile("%s" %(args.bam2),"rb")
@@ -201,7 +210,10 @@ with open("%s" %(args.fasta), "rU") as fasta_raw, open("%s"%(args.gtf),"r") as g
     
     SAMresultsCount(samDict1,samDict2,samDict3,verbose = True)
 
-
+    for element, val in samDict1.items():
+        for sub_element,sub_val in val.items():
+            print element, sub_element,sub_val
+##        print element[0]
 
     # Now starts the SNP2Quant part
     # with the vcf like dictionaries loaded as samDict 1 to 3
@@ -249,12 +261,12 @@ with open("%s" %(args.fasta), "rU") as fasta_raw, open("%s"%(args.gtf),"r") as g
     ### THe dicitonary changes with the function pass to a string, instead of List
 
     silenceDict = {}
-    for silencekey, silencecontent in masterDict.items():
-        
-        if '_' in silencekey[1]:
-            silencekey[1] = silencekey[1].split('_')[0]
-            print silencekey[1]
-        silenceDict[silencekey[1]] = silencekey[0]
+
+    
+    for silenceGene, silenceSNP in masterDict.items():
+        for silencePOS, emptydata in silenceSNP.items():
+            
+            silenceDict[silencekey[1]] = silencekey[0]
 
 
     print len(silenceDict)
@@ -268,7 +280,7 @@ with open("%s" %(args.fasta), "rU") as fasta_raw, open("%s"%(args.gtf),"r") as g
             with open('%s'%(args.fastaOut),'w') as fasta_raw:
                 record_dict = SeqIO.index('%s' %(args.fasta), "fasta")
                 print '[STATUS] Silencing the fasta sequence'
-                MaskAFasta(silenceDict,record_dict, fasta_raw)
+                MaskAFasta(silenceDict,record_dict, fasta_raw, convDict)
                 print '[STATUS] Masked Fasta generated'
         if args.fasta =='none':
             print '[STATUS] No input FASTA file found'
@@ -286,6 +298,8 @@ with open("%s" %(args.fasta), "rU") as fasta_raw, open("%s"%(args.gtf),"r") as g
         print '[STATUS] Initiate Quantification'
         
         extendMasterDict(masterDict,samDict1,samDict2,samDict3)
+
+
         
     resDict = {}
     total = 100
@@ -322,8 +336,8 @@ with open("%s" %(args.fasta), "rU") as fasta_raw, open("%s"%(args.gtf),"r") as g
             elementcount +=1
 
 ##            
-    for resDictkey, resDictitems in resDict.items():
-        print resDictkey, resDictkey[0]
+##    for resDictkey, resDictitems in resDict.items():
+##        print resDictkey, resDictkey[0]
         # now we run the auntification on those
         # each element is n/100 * 5
         # create a dictionary with the likelyhoods of joining, then add them up.

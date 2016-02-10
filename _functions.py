@@ -673,15 +673,17 @@ def allpile(sequenceDictionary, genePileup, geneName, start, stop,secondpass):
     return resDict
 
 
-def MaskAFasta (vcfDictionary, recordDictionary, outHandle ):
+def MaskAFasta (vcfDictionary, recordDictionary, outHandle, conversionDict ):
     """
     vcfDictionary contains SNP results in vcf like format.
+    ## formatted as a Dict of Dicts, with the genes outside and the position inside
     ## changed this to Silencedictionary
 
     
     recordDictionary contains Fasta sequences.
     the outpu handle opens a new writable file
 
+    conversionDict is for conversion from gene names to chromosomes.
     
     No reason to keep this as an independant script, attach to the Quantification Script.
     Maskafasta takes the results from SNP quantification, a fasta file and the direction for an out file ( an open handle)
@@ -692,18 +694,26 @@ def MaskAFasta (vcfDictionary, recordDictionary, outHandle ):
 
     fastaDict = {}
             
-    for elements, values in recordDictionary.items():
-        seq_mutable = values.seq.tomutable()
-        fastaDict[elements] = seq_mutable
+    for Identitiy, sequence in recordDictionary.items():
+        seq_mutable = sequence.seq.tomutable()
 
-    for element, value in vcfDictionary.items():
+        # Identitiy are gene names,  seq_mutable is the sequence
+        fastaDict[Identitiy] = seq_mutable
+        print Identitiy
+
+
+    for gene, SNP in vcfDictionary.items():
+        for Position, data in SNP.items():
+            
 ##        print element, values
 ##        The VCF file contains the absolute position of the SNP on the sequence, so just replace it with an N
-##        if '_alt' in 
-        try:
-            fastaDict[value][int(element)] = 'N'
-        except:
-            print value, element
+# value has to be the chromosome !!  I get those from the gtf 
+            try:
+                fastaDict[conversionDict[gene]][int(Position)] = 'N'
+            except:
+                print '[ERROR] could not silence SNP with position %s on gene %s' %(element,gene)
+
+                
     for element, value in fastaDict.items():
         out_seqs = SeqIO.SeqRecord((value), id = element)
         SeqIO.write(out_seqs, outHandle, "fasta")
@@ -715,9 +725,12 @@ def add2masterDict(indict, masterdict):
     Extend the MasterDictionary to contain all possible SNPs
     """
     try:
-        for element, values in indict.items():
-            masterdict[[element[0],element[1]]] = []
-            masterdict
+        for gene, SNP in indict.items():
+            for SNPpos, details in SNP.items():
+                if gene not in masterdict:
+                    masterdict[gene] = {SNPpos:[]}
+                elif gene in masterdict:
+                    masterdict[gene][SNPpos] = []
     except:
         pass
     return masterdict
@@ -729,27 +742,30 @@ def binning(inDict, masterDict):
     Appends the SNP count in the individual observations to the MasterDictionary
     """
     
-    for element, value in masterDict.items():
-        SNPcount = 0
-        if element in inDict:
-            
-            SNPs = int(inDict[element][2])
-            totalCoverage = int(inDict[element][3])
-        elif element not in inDict:
-            SNPs = 0
-            totalCoverage = 100
-        if totalCoverage < 100:
-            totalCoverage = 100
+    for gene, SNP in masterDict.items():
+        for Pos, emptyvalue in SNP.items():
+            SNPcount = 0
+            if gene in inDict and Pos in inDict[gene] :
+                
+                SNPs = int(inDict[element][2])
+                totalCoverage = int(inDict[element][3])
+            elif gene not in inDict or Pos not in inDict[gene] :
 
-        count = 0
+                SNPs = 0
+                totalCoverage = 100
+                
+            if totalCoverage < 100:
+                totalCoverage = 100
+
+            count = 0
         # now create bins,  randomly draw from one sample 50 times (of whole coverage) and store how many SNPSs you get
-        for repeat in range(0, 100):
-            choice = random.randrange(0,int(totalCoverage))
+            for repeat in range(0, 100):
+                choice = random.randrange(0,int(totalCoverage))
             
-            if choice < SNPs:
-                count +=1
+                if choice < SNPs:
+                    count +=1
 
-        value.append(count)
+            inDict[gene][Pos].append(count)
 
 
     return masterDict

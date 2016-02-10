@@ -110,16 +110,20 @@ def SAM2SNP(feature,fasta_raw,samfile,gffDict,outfile,cutoff ,spass, createInter
                                 synonym = getProt( position, protein,DNADict,ALT,int(value[0]))
 ##                                synonym = synonymity(protein,alternativeSeq, position, ALT,int(value[0]) )
                                 position = int(position) + 1
-                                
-                                identity = [gene,position]
-                                identity = str(identity)
 
-                                if not identity in transDict:
-                                        transDict[str(identity)] = [ORIG,ALT,SNPcov,Basecov,DensfunProb,synonym]
-                                if identity in transDict:
-                                        position = '%s_alt' %(position)
-                                        identity = str([gene,position])
-                                        transDict[identity] = [ORIG,ALT,SNPcov,Basecov,DensfunProb,synonym]
+
+                                # this has to change, the unique feature is the position / gene combination so this has to be a dict of dicts...
+
+                                
+##                                identity = [gene,position]
+
+                                if not gene in transDict:
+                                        transDict[gene] = {position : [ORIG,ALT,SNPcov,Basecov,DensfunProb,synonym]}
+                                if gene in transDict:
+                                        transDict[gene][position] = [ORIG,ALT,SNPcov,Basecov,DensfunProb,synonym]
+##                                        position = '%s_alt' %(position)
+##                                        identity = str([gene,position])
+##                                        transDict[identity] = [ORIG,ALT,SNPcov,Basecov,DensfunProb,synonym]
 
         return transDict
 
