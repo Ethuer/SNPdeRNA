@@ -159,7 +159,6 @@ with open("%s" %(args.fasta), "rU") as fasta_raw, open("%s"%(args.gtf),"r") as g
     convDict = {}
 
     for row in gffDict:
-        print row[0],row[1]
         convDict[row[1]] = row[0]
 ##    convDict = 
     
@@ -210,9 +209,9 @@ with open("%s" %(args.fasta), "rU") as fasta_raw, open("%s"%(args.gtf),"r") as g
     
     SAMresultsCount(samDict1,samDict2,samDict3,verbose = True)
 
-    for element, val in samDict1.items():
-        for sub_element,sub_val in val.items():
-            print element, sub_element,sub_val
+##    for element, val in samDict1.items():
+##        for sub_element,sub_val in val.items():
+##            print element, sub_element,sub_val
 ##        print element[0]
 
     # Now starts the SNP2Quant part
@@ -266,10 +265,10 @@ with open("%s" %(args.fasta), "rU") as fasta_raw, open("%s"%(args.gtf),"r") as g
     for silenceGene, silenceSNP in masterDict.items():
         for silencePOS, emptydata in silenceSNP.items():
             
-            silenceDict[silencekey[1]] = silencekey[0]
+            silenceDict[silencePOS] = convDict[silenceGene]
 
 
-    print len(silenceDict)
+##    print len(silenceDict)
     # Start classifying SNPs as ASE, and mutate fasta
 
     if args.spass == 'No' and args.fastaOut != 'none' :
@@ -280,7 +279,7 @@ with open("%s" %(args.fasta), "rU") as fasta_raw, open("%s"%(args.gtf),"r") as g
             with open('%s'%(args.fastaOut),'w') as fasta_raw:
                 record_dict = SeqIO.index('%s' %(args.fasta), "fasta")
                 print '[STATUS] Silencing the fasta sequence'
-                MaskAFasta(silenceDict,record_dict, fasta_raw, convDict)
+                MaskAFasta(silenceDict,record_dict, fasta_raw)
                 print '[STATUS] Masked Fasta generated'
         if args.fasta =='none':
             print '[STATUS] No input FASTA file found'
@@ -293,47 +292,55 @@ with open("%s" %(args.fasta), "rU") as fasta_raw, open("%s"%(args.gtf),"r") as g
 
     
     
+##
+##    if args.spass != 'No':
+##        print '[STATUS] Initiate Quantification'
+##        
+    masterDict = extendMasterDict(masterDict,samDict1,samDict2,samDict3)
 
-    if args.spass != 'No':
-        print '[STATUS] Initiate Quantification'
-        
-        extendMasterDict(masterDict,samDict1,samDict2,samDict3)
 
-
-        
+    # extended Masterdict for binomial testing
     resDict = {}
     total = 100
-    for masDictkey, masDictitems in masterDict.items():
-##        print masDictitems
-        resDict[masDictkey]={}
-        elementcount = 0
-        for element in masDictitems:
+    for masDictgene, masDictSNPs in masterDict.items():
+        for SNPpos, SNPdata in masDictSNPs.items():
+            elementcount = 0
+            if masDictgene not in resDict:
+                resDict[masDictgene] = {SNPpos: []}
+            else:
+                resDict[masDictgene][SNPpos] = []
 
-            resDict[masDictkey] = {elementcount: []}
+
+##            print masDictgene, SNPpos, SNPdata
+##                print SNPdata
 
 
+##            print SNPdata[2]
+                
+##            observations = 
             # Check if it is Noise
-            NoiseProb = distFunNegBin(100,int(element),0.02)
+            elementcount = 0
+            for element in SNPdata:
+                NoiseProb = distFunNegBin(100,int(element),0.02)
 
 
             # Check if it is a full SNP
-            negative = total - int(element)
+                negative = total - int(element)
 
-            FullProb = distFunNegBin(100,negative,0.02)
+                FullProb = distFunNegBin(100,negative,0.02)
                         
 ##            resDict[masDictkey] = {elementcount: ['FullSNP' ,FullProb]}
             # Check for Allele Specific expression
-            ASEprob = pmfNegBin(total,element,0.5)
+                ASEprob = pmfNegBin(total,element,0.5)
             
-            resDict[masDictkey][elementcount].append(NoiseProb)
-            resDict[masDictkey][elementcount].append(ASEprob)
-            resDict[masDictkey][elementcount].append(FullProb)
+                resDict[masDictgene][SNPpos].append(NoiseProb)
+                resDict[masDictgene][SNPpos].append(ASEprob)
+                resDict[masDictgene][SNPpos].append(FullProb)
 
+                elementcount +=1
 
-
-
-            
-            elementcount +=1
+    for element, value in resDict.items():
+        print element, value
 
 ##            
 ##    for resDictkey, resDictitems in resDict.items():

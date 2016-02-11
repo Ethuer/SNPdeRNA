@@ -673,14 +673,14 @@ def allpile(sequenceDictionary, genePileup, geneName, start, stop,secondpass):
     return resDict
 
 
-def MaskAFasta (vcfDictionary, recordDictionary, outHandle, conversionDict ):
+def MaskAFasta (silenceDictionary, fastaDictionary, outHandle):
     """
-    vcfDictionary contains SNP results in vcf like format.
+    silenceDictionary contains SNP results as position in the key, and the chromosomename in the .
     ## formatted as a Dict of Dicts, with the genes outside and the position inside
     ## changed this to Silencedictionary
 
     
-    recordDictionary contains Fasta sequences.
+    fastaDictionary contains Fasta sequences. and other parts,  convert to fastaDict where the sequences are mutable.
     the outpu handle opens a new writable file
 
     conversionDict is for conversion from gene names to chromosomes.
@@ -694,24 +694,24 @@ def MaskAFasta (vcfDictionary, recordDictionary, outHandle, conversionDict ):
 
     fastaDict = {}
             
-    for Identitiy, sequence in recordDictionary.items():
+    for Identitiy, sequence in fastaDictionary.items():
         seq_mutable = sequence.seq.tomutable()
 
         # Identitiy are gene names,  seq_mutable is the sequence
         fastaDict[Identitiy] = seq_mutable
-        print Identitiy
 
 
-    for gene, SNP in vcfDictionary.items():
-        for Position, data in SNP.items():
+##    for gene, SNP in vcfDictionary.items():
+    for Position,chromosome in silenceDictionary.items():
+##        for Position, data in SNP.items():
             
 ##        print element, values
 ##        The VCF file contains the absolute position of the SNP on the sequence, so just replace it with an N
 # value has to be the chromosome !!  I get those from the gtf 
-            try:
-                fastaDict[conversionDict[gene]][int(Position)] = 'N'
-            except:
-                print '[ERROR] could not silence SNP with position %s on gene %s' %(element,gene)
+        try:
+            fastaDict[chromosome][int(Position)] = 'N'
+        except:
+            print '[ERROR] could not silence SNP with position %s on gene %s' %(element,gene)
 
                 
     for element, value in fastaDict.items():
@@ -744,15 +744,24 @@ def binning(inDict, masterDict):
     
     for gene, SNP in masterDict.items():
         for Pos, emptyvalue in SNP.items():
-            SNPcount = 0
-            if gene in inDict and Pos in inDict[gene] :
-                
-                SNPs = int(inDict[element][2])
-                totalCoverage = int(inDict[element][3])
-            elif gene not in inDict or Pos not in inDict[gene] :
 
+
+            print inDict[gene][Pos]
+            SNPcount = 0
+            if gene in inDict:
+                if Pos in inDict[gene] :
+                
+                    SNPs = int(inDict[gene][Pos][2])
+                    totalCoverage = int(inDict[gene][Pos][3])
+                if Pos not in inDict[gene] :
+                    SNPs = 0
+                    totalCoverage = 100
+                
+            elif gene not in inDict :
                 SNPs = 0
                 totalCoverage = 100
+
+
                 
             if totalCoverage < 100:
                 totalCoverage = 100
@@ -765,8 +774,8 @@ def binning(inDict, masterDict):
                 if choice < SNPs:
                     count +=1
 
-            inDict[gene][Pos].append(count)
-
+            masterDict[gene][Pos].append(count)
+##            print inDict[gene][Pos]
 
     return masterDict
 
@@ -800,9 +809,13 @@ def extendMasterDict(masterDict,inDict1,inDict2=0,inDict3=0):
 ##        print len(chosenOne)
 
             
-        binning(chosenOne, masterDict)
+        masterDict = binning(chosenOne, masterDict)
 
 
+        
+      
+    return masterDict
+    
 
 def populateMasterDict(inDict1,inDict2=0,inDict3=0):
     """
