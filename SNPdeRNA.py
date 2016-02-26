@@ -42,20 +42,28 @@ import thread
 ##    return combined_prob
 
 
-def SAMresultsCount(samDict1,samDict2,samDict3,verbose = True):
-    if verbose == True:
-        if samDict3 > 0:
-            print '[Status]  Bam files loaded with %s , %s , %s Preliminary SNPs read' %(len(samDict1), len(samDict2),len(samDict3))
-            exit
-        if samDict2 > 0:
-            print '[Status]  Bam files loaded with %s , %s Preliminary SNPs read' %(len(samDict1), len(samDict2))
-            exit
-        if samDict1 > 0:
-            print '[Status]  Bam files loaded with %s Preliminary SNPs read' %(len(samDict1))
-            exit
-
 # Unification of the 2 remaining scripts,
 # add the SAM2SNP first, move as much as possible to _functions
+
+def writeVCFormat(masterDict,outfile,convDict):
+    #write Header
+
+    for gene, SNPs in masterDict.items():
+        CHROM = convDict[gene]
+
+        for SNP, info in SNPs.items():
+            POS = SNP
+            ID = '%s_%s'%(gene,POS)
+            REF = info[0]
+            ALT = info[1]
+            QUAL = 30
+            Filter = '.'
+            INFO = 'NS=%s;DP=%s' %(info[5],info[2])
+        
+            outfile.writerrow([CHROM,POS,ID[0],REF,ALT,QUAL,Filter,INFO[0]])
+
+
+
 
 parser = argparse.ArgumentParser(description='Looking for SNPs in RNAseq data. This part accepts SAM or BAM input files, mapped against an available reference. In a first step it counts the occurrances of Polymorphisms against a reference. In second pass mode, only already detected SNPs are being analyzed')
 
@@ -198,25 +206,35 @@ with open("%s" %(args.fasta), "rU") as fasta_raw, open("%s"%(args.gtf),"r") as g
     # one BAM file is essential
     ## CATCH EXCEPTION for missing indexing file
 
-    try:
-        samfile1 = pysam.AlignmentFile("%s" %(args.bam1),"rb")
-        samDict1 = {}
-        SAMList = [samDict1]
-        samDict1 = SAM2SNP(args.feature,fasta_raw,samfile1,gffDict,outfile,cutoff,args.spass, createIntermediate)
-    except:
-        print '[ERROR] Read the replicate 1 incorrectly, please verify that the format is correct, and the file exists'
-        print '[ASSISTANCE] Most common error is missing index file from BAM input.  
-        print '[ASSISTANCE] Attempting to create index file from here.
-        try:
-            commandLine = 'samtools index %s' $(args.bam1)
-            os.system(commandLine)
 
+    
 
-            # wait until this finishes, then continue
+##    try:
+        
+##        samfile1 = pysam.AlignmentFile("%s" %(args.bam1),"rb")
+##        samDict1 = {}
+##        SAMList = [samDict1]
+##        samDict1 = SAM2SNP(args.feature,fasta_raw,samfile1,gffDict,outfile,cutoff,args.spass, createIntermediate)
+    samDict1,SAMList = SamImport(args.bam1,SAMList,args.feature,fasta_raw,gffDict,outfile,cutoff,args.spass,createIntermediate)
 
-        except:
-            print '[ERROR] Read the replicate 1 incorrectly, please verify that the format is correct, and the file exists'
-            exit
+##            ,feature,fasta_raw,gffDict,outfile,cutoff,spass,createIntermediate
+##    except:
+##        print '[ERROR] Read the replicate 1 incorrectly, please verify that the format is correct, and the file exists'
+##        print '[ASSISTANCE] Most common error is missing index file from BAM input.  '
+##        print '[ASSISTANCE] Attempting to create index file from here.'
+##        try:
+##            commandLine = 'samtools index %s' %(args.bam1)
+##            os.system(commandLine)
+##
+##            # wait until this finishes
+##            samDict1,SAMList = SamImport(args.bam1,SAMList)
+##
+##
+##            # wait until this finishes, then continue
+##
+##        except:
+##            print '[ERROR] Read the replicate 1 incorrectly, please verify that the format is correct, and the file exists'
+##            exit
             
     
     try:
@@ -238,8 +256,8 @@ with open("%s" %(args.fasta), "rU") as fasta_raw, open("%s"%(args.gtf),"r") as g
         samDict3 = 0
         pass
 
-    SAMresultsCount(samDict1,samDict2,samDict3,verbose = True)
-
+##    SAMresultsCount(samDict1,samDict2,samDict3,verbose = True)
+##
 
     
 
@@ -256,13 +274,58 @@ with open("%s" %(args.fasta), "rU") as fasta_raw, open("%s"%(args.gtf),"r") as g
 
 
     writeout = True
-    
+
+##def getSNPfromSAMs(gene,samDict):
+##    SNPDict = {}
+##    if gene in samDict:
+##        for SNP, info in samDict[gene].items():
+##            # info contains :
+##            SNPDict[SNP] = [info[0],info[1],info[2],info[3],info[5]]
+##    return SNPDict
+####            ORIG,ALT,SNPcov,Basecov,DensfunProb,synonym
+##
+##def WriteVCFlikeoutput(masterDict,convDict,samDict):
+##    for gene, SNPs in masterDict.items():
+##
+##        # horrible way of dealing with this :: 
+##        SNPdict = getSNPfromSAMs(gene,samDict)
+####        SNPdict2 = getSNPfromSAMs(gene,samDict2)
+####        SNPdict3 = getSNPfromSAMs(gene,samDict3)
+##        
+##        # go through genes
+##        CHROM = convDict[gene]
+##
+##        for SNP, val in SNPs.items():
+##            if SNP in SNPdict:
+##                val[0] =
+##                val[1] =
+##                val[2] =
+##                val[3] =
+                
+            
 
     # Populate the master dictionary
-    # This creates an empty dictionary containing all SNPs 
+    # This creates an empty dictionary containing all SNPs
+    # masterdict here contains the a dictionary of genes. each gene is a dictionary of SNPs
+    # each SNP gets a reference Seq, and alternative seq and in case of replicates a count score
+    # to write this to file it needs to follow vcf format
+    # compute NS (number of samples and DP combined pileup coverage
+    # chrom from confDict,  pos is with the SNp, ID = gene+posingene, QUAL ??
+    # e.g
+##  CHROM POS    ID        REF  ALT     QUAL FILTER INFO                              FORMAT      Sample1        Sample2        Sample3
+##    2      4370   rs6057    G    A       29   .      NS=2;DP=13;AF=0.5;DB;H2           GT:GQ:DP:HQ 0|0:48:1:52,51 1|0:48:8:51,51 1/1:43:5:.,.
     masterDict = populateMasterDict(samDict1,samDict2,samDict3) 
 
+    print 'masterDict with %s' %(len(masterDict))
+    for element,val in masterDict.items():
+        print element,val
+    
 
+
+    if writeout == True:
+        print '[STATUS] Writing VCF file to %s' %(args.out)
+        ## initiate writefunction
+        writeVCFormat(masterDict,outfile,convDict)
 
     print '[STATUS] Creating and populating Dictionaries'
 
@@ -296,8 +359,12 @@ with open("%s" %(args.fasta), "rU") as fasta_raw, open("%s"%(args.gtf),"r") as g
             pass
 
 
+    ### INITIATE REMAPPING IF POSSIBLE
+        
 
     writeToFile = True
+    if writeToFile == True:
+        print '[STATUS] writing vcf like intermediate output'
 
    # implement writetofile option here
 
@@ -308,16 +375,14 @@ with open("%s" %(args.fasta), "rU") as fasta_raw, open("%s"%(args.gtf),"r") as g
 
     if args.spass != 'No' :
      
-        masterDict = extendMasterDict(masterDict,samDict1,samDict2,samDict3)
-        if writeToFile == True:
-            print '[STATUS] writing vcf like intermediate output'
+        masterDictResample = extendMasterDict(masterDict,samDict1,samDict2,samDict3)
 
 
 
     # extended Masterdict for binomial testing
         resDict = {}
         total = 100
-        for masDictgene, masDictSNPs in masterDict.items():
+        for masDictgene, masDictSNPs in masterDictResample.items():
             for SNPpos, SNPdata in masDictSNPs.items():
                 elementcount = 0
                 if masDictgene not in resDict:

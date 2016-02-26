@@ -716,6 +716,40 @@ def MaskAFasta (silenceDictionary, fastaDictionary, outHandle):
         SeqIO.write(out_seqs, outHandle, "fasta")
             
 
+def combineSNPdata(ListMasterdict,ListIndict,NS):
+    outList = []
+    outList_alt = ['0']
+    ##            ORIG,ALT,SNPcov,Basecov,synonym
+    # possible cases:   alt overlap, simple addition
+    # index 0 should always overlap. since it's the same fasta reference
+    if ListIndict[0] == ListMasterdict[0] and ListIndict[1] == ListMasterdict[1]:
+        NS +=1
+        outList[0] = ListIndict[0]
+        outList[1] = ListIndict[1]
+        outList[2] = int(ListIndict[2]) + int(ListMasterdict[2])
+        outList[3] = int(ListIndict[3]) + int(ListMasterdict[3])
+        outList[4] = ListIndict[4]
+        outList[5] = NS
+
+    # different alternative SNP    create a list of 2x length, the bigger coverage first, and seperate at the writing function
+    if ListIndict[1] != ListMasterdict[1]:
+        if int(ListMasterdict[2]) > int(ListIndict[2]):
+            outList = ListMasterdict
+            for element in ListIndict:
+                outlist.append(element)
+
+            
+        if int(ListIndict[2]) > int(ListMasterdict[2]):
+            outList = ListIndict
+            for element in ListMasterDict:
+                outlist.append(element)
+        
+
+    if outList_alt[0] != '0' :    
+        return outList, outList_alt
+##        Basecov    
+    
+
 
 def add2masterDict(indict, masterdict):
     """
@@ -724,10 +758,17 @@ def add2masterDict(indict, masterdict):
     try:
         for gene, SNP in indict.items():
             for SNPpos, details in SNP.items():
+                # NS : Number of Samples
+                NS = 1
                 if gene not in masterdict:
-                    masterdict[gene] = {SNPpos:[]}
+                    masterdict[gene] = {SNPpos:[indict[gene][SNPpos][0],indict[gene][SNPpos][1],indict[gene][SNPpos][2],indict[gene][SNPpos][3],indict[gene][SNPpos][5],NS]}
                 elif gene in masterdict:
-                    masterdict[gene][SNPpos] = []
+                    if SNPpos not in masterdict[gene]:
+                        masterdict[gene][SNPpos] = [indict[gene][SNPpos][0],indict[gene][SNPpos][1],indict[gene][SNPpos][2],indict[gene][SNPpos][3],indict[gene][SNPpos][5],NS]
+                    if SNPpos in masterdict[gene]:
+                        NS = masterdict[gene][SNPpos][5]
+                        masterdict[gene][SNPpos] = combineSNPdata(SNPpos,indict[gene][SNPpos],NS)
+                        
     except:
         pass
     return masterdict
@@ -816,7 +857,7 @@ def extendMasterDict(masterDict,inDict1,inDict2=0,inDict3=0):
 
 def populateMasterDict(inDict1,inDict2=0,inDict3=0):
     """
-    Creates the MAsterDictionary, and populates it with the keys for SNPS from up to 3 samples
+    Creates the MasterDictionary, and populates it with the keys for SNPS from up to 3 samples
     """
     masterDict = {}
     if inDict2 == 0:
@@ -833,3 +874,23 @@ def populateMasterDict(inDict1,inDict2=0,inDict3=0):
 
 
 
+
+def SAMresultsCount(samDict1,samDict2,samDict3,verbose = True):
+    if verbose == True:
+        if samDict3 > 0:
+            print '[Status]  Bam files loaded with %s , %s , %s Preliminary SNPs read' %(len(samDict1), len(samDict2),len(samDict3))
+            exit
+        if samDict2 > 0:
+            print '[Status]  Bam files loaded with %s , %s Preliminary SNPs read' %(len(samDict1), len(samDict2))
+            exit
+        if samDict1 > 0:
+            print '[Status]  Bam files loaded with %s Preliminary SNPs read' %(len(samDict1))
+            exit
+from _functions_SAM2SNP import SAM2SNP
+
+def SamImport(bamLocation,SAMList,feature,fasta_raw,gffDict,outfile,cutoff,spass,createIntermediate):
+    samfile = pysam.AlignmentFile("%s" %(bamLocation),"rb")
+    samDict = {}
+    SAMList = [samDict]
+    samDict = SAM2SNP(feature,fasta_raw,samfile,gffDict,outfile,cutoff,spass, createIntermediate)
+    return samDict,SAMList
