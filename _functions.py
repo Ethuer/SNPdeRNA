@@ -150,10 +150,7 @@ def distFunNegBin(total,observ,prob):
 
     
     for f in range(0,failures):
-
-
-
-        
+    
         newtotal = (f + observ)
         distProb = distProb + pmfNegBin(newtotal,observ,prob)
 ##        print distProb
@@ -746,7 +743,7 @@ def binning(inDict, masterDict):
         for Pos, emptyvalue in SNP.items():
 
 
-            print inDict[gene][Pos]
+##            print inDict[gene][Pos]
             SNPcount = 0
             if gene in inDict:
                 if Pos in inDict[gene] :

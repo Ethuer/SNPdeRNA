@@ -3,8 +3,10 @@ import csv
 ##import numpy as np
 import sys,argparse
 import os.path
+import os
 from _functions import *
 from _functions_SAM2SNP import SAM2SNP
+from _functions_SNP2Quant import FischerCombineP
 import pysam
 from Bio import SeqIO
 from Bio.Seq import Seq
@@ -17,6 +19,27 @@ import os.path
 
 
 import thread
+
+
+##
+##def FischerCombineP(ListOfP):
+##    """
+##
+##    returns the probability of the combined p-values, according to the Fischer method for combining p values
+##
+##    """
+##    summary = 0
+##    for element in ListOfP:
+##        arg = math.log(element)
+##        arg = -2 * arg
+##        summary = float(summary) + float(arg)
+##
+##    target =  float(summary)
+##    df = len(ListOfP) -1
+##
+##    combined_prob = chisqprob(target,df)
+##
+##    return combined_prob
 
 
 def SAMresultsCount(samDict1,samDict2,samDict3,verbose = True):
@@ -148,7 +171,7 @@ with open("%s" %(args.fasta), "rU") as fasta_raw, open("%s"%(args.gtf),"r") as g
     
     gff_file = csv.reader(gff_raw, delimiter = '\t')
     outfile = csv.writer(out_raw, delimiter = '\t')
-    cutoff = 0.05
+    cutoff = float(args.minqual)
     origin = args.origin
     createIntermediate = False
     
@@ -175,14 +198,26 @@ with open("%s" %(args.fasta), "rU") as fasta_raw, open("%s"%(args.gtf),"r") as g
     # one BAM file is essential
     ## CATCH EXCEPTION for missing indexing file
 
-    
-    samfile1 = pysam.AlignmentFile("%s" %(args.bam1),"rb")
-    samDict1 = {}
-    SAMList = [samDict1]
-    samDict1 = SAM2SNP(args.feature,fasta_raw,samfile1,gffDict,outfile,cutoff,args.spass, createIntermediate)
-##    except:
-##    print '[ERROR] Read the replicate 1 incorrectly, please verify that the format is correct, and the file exists'
-##    exit
+    try:
+        samfile1 = pysam.AlignmentFile("%s" %(args.bam1),"rb")
+        samDict1 = {}
+        SAMList = [samDict1]
+        samDict1 = SAM2SNP(args.feature,fasta_raw,samfile1,gffDict,outfile,cutoff,args.spass, createIntermediate)
+    except:
+        print '[ERROR] Read the replicate 1 incorrectly, please verify that the format is correct, and the file exists'
+        print '[ASSISTANCE] Most common error is missing index file from BAM input.  
+        print '[ASSISTANCE] Attempting to create index file from here.
+        try:
+            commandLine = 'samtools index %s' $(args.bam1)
+            os.system(commandLine)
+
+
+            # wait until this finishes, then continue
+
+        except:
+            print '[ERROR] Read the replicate 1 incorrectly, please verify that the format is correct, and the file exists'
+            exit
+            
     
     try:
         samfile2 = pysam.AlignmentFile("%s" %(args.bam2),"rb")
@@ -203,16 +238,10 @@ with open("%s" %(args.fasta), "rU") as fasta_raw, open("%s"%(args.gtf),"r") as g
         samDict3 = 0
         pass
 
-##    print len(samDict1)
-##    for element, value in samDict1.items():
-##        print element, value
-    
     SAMresultsCount(samDict1,samDict2,samDict3,verbose = True)
 
-##    for element, val in samDict1.items():
-##        for sub_element,sub_val in val.items():
-##            print element, sub_element,sub_val
-##        print element[0]
+
+    
 
     # Now starts the SNP2Quant part
     # with the vcf like dictionaries loaded as samDict 1 to 3
@@ -224,41 +253,24 @@ with open("%s" %(args.fasta), "rU") as fasta_raw, open("%s"%(args.gtf),"r") as g
     geneDict = {}
     genecount = 0
     posDict = {}
-##    noiseDict = {}
-##    outDict = {}
 
 
     writeout = True
     
-##    neg_count = 0
-##    pos_count = 0
-##    wrong_count = 0
-##    origin = 'SGD'
-    
-        
-##    writevcfheader(writeout, outfile)
-
 
     # Populate the master dictionary
     # This creates an empty dictionary containing all SNPs 
     masterDict = populateMasterDict(samDict1,samDict2,samDict3) 
 
-##    for karg, marg in masterDict.items():
-##        print karg, karg[0]
 
 
     print '[STATUS] Creating and populating Dictionaries'
-##    for repeat in range(0,20):
-##        extendMasterDict(masterDict,inDict1,inDict2,inDict3)
 
     print '[STATUS] Master Dictionary with %s possible SNPs' %(len(masterDict))
-
 
     print '[STATUS] Initiating SNP classification and dispersion estimation'
 
     
-    ### THe dicitonary changes with the function pass to a string, instead of List
-
     silenceDict = {}
 
     
@@ -267,14 +279,12 @@ with open("%s" %(args.fasta), "rU") as fasta_raw, open("%s"%(args.gtf),"r") as g
             
             silenceDict[silencePOS] = convDict[silenceGene]
 
-
-##    print len(silenceDict)
     # Start classifying SNPs as ASE, and mutate fasta
 
     if args.spass == 'No' and args.fastaOut != 'none' :
         print '[STATUS] Writing masked fasta file '
         print '[STATUS] Please use this as a new reference to eleminate alignment derived errors'
-##        try:
+        
         if args.fasta != 'none':
             with open('%s'%(args.fastaOut),'w') as fasta_raw:
                 record_dict = SeqIO.index('%s' %(args.fasta), "fasta")
@@ -282,187 +292,75 @@ with open("%s" %(args.fasta), "rU") as fasta_raw, open("%s"%(args.gtf),"r") as g
                 MaskAFasta(silenceDict,record_dict, fasta_raw)
                 print '[STATUS] Masked Fasta generated'
         if args.fasta =='none':
-            print '[STATUS] No input FASTA file found'
+            print '[STATUS] No input FASTA file found, no output fasta created'
+            pass
 
+
+
+    writeToFile = True
+
+   # implement writetofile option here
 
     
     # lets get to the quantification
 
     # populate masterdict to randomized resampling ??
 
-    
-    
-##
-##    if args.spass != 'No':
-##        print '[STATUS] Initiate Quantification'
-##        
-    masterDict = extendMasterDict(masterDict,samDict1,samDict2,samDict3)
+    if args.spass != 'No' :
+     
+        masterDict = extendMasterDict(masterDict,samDict1,samDict2,samDict3)
+        if writeToFile == True:
+            print '[STATUS] writing vcf like intermediate output'
+
 
 
     # extended Masterdict for binomial testing
-    resDict = {}
-    total = 100
-    for masDictgene, masDictSNPs in masterDict.items():
-        for SNPpos, SNPdata in masDictSNPs.items():
-            elementcount = 0
-            if masDictgene not in resDict:
-                resDict[masDictgene] = {SNPpos: []}
-            else:
-                resDict[masDictgene][SNPpos] = []
-
-
+        resDict = {}
+        total = 100
+        for masDictgene, masDictSNPs in masterDict.items():
+            for SNPpos, SNPdata in masDictSNPs.items():
+                elementcount = 0
+                if masDictgene not in resDict:
+                    resDict[masDictgene] = {SNPpos: []}
+                else:
+                    resDict[masDictgene][SNPpos] = []
 ##            print masDictgene, SNPpos, SNPdata
 ##                print SNPdata
 
-
-##            print SNPdata[2]
-                
 ##            observations = 
             # Check if it is Noise
-            elementcount = 0
-            for element in SNPdata:
-                NoiseProb = distFunNegBin(100,int(element),0.02)
+                elementcount = 0
+
+            # create small dictionary, and unify the p values with Fischers 
+                for element in SNPdata:
+                    NoiseProb = distFunNegBin(100,int(element),0.02)
 
 
             # Check if it is a full SNP
-                negative = total - int(element)
+                    negative = total - int(element)
 
-                FullProb = distFunNegBin(100,negative,0.02)
+                    FullProb = distFunNegBin(100,negative,0.02)
                         
-##            resDict[masDictkey] = {elementcount: ['FullSNP' ,FullProb]}
             # Check for Allele Specific expression
-                ASEprob = pmfNegBin(total,element,0.5)
+                    ASEprob = pmfNegBin(total,element,0.5)
             
-                resDict[masDictgene][SNPpos].append(NoiseProb)
-                resDict[masDictgene][SNPpos].append(ASEprob)
-                resDict[masDictgene][SNPpos].append(FullProb)
+                    resDict[masDictgene][SNPpos].append(NoiseProb)
+                    resDict[masDictgene][SNPpos].append(ASEprob)
+                    resDict[masDictgene][SNPpos].append(FullProb)
 
-                elementcount +=1
+                    elementcount +=1
 
-    for element, value in resDict.items():
-        print element, value
-
-##            
-##    for resDictkey, resDictitems in resDict.items():
-##        print resDictkey, resDictkey[0]
-        # now we run the auntification on those
-        # each element is n/100 * 5
-        # create a dictionary with the likelyhoods of joining, then add them up.
-        # 0.014 for noise  density
-        # 0.986 for Full SNPs
-        # use density of inverse count  ( count against)
-        # all else = ASE
-
-        
+        probDict = {}
+        for gene, value in resDict.items():
+            probDict[gene] = []
+            for SNP, perc in value.items():
+##            print gene, SNP, perc[0], perc[1],perc[3]
+##            Noise = perc[0]
+                probDict[gene].append(perc[1])
+                ASE = perc[1]
+##            Full = perc[3]
 
 
-    
-##        except:
-##            print '[STATUS] No masked Fasta generated'
-##        
+            probabil = FischerCombineP(probDict[gene])
+            print gene , '  ASE probability ', probabil 
 
-    
-##    if args.spass != 'No':
-##        
-
-
-        # here goes also the test for full SNPs
-####        
-####        masterDict = likelihoodTest(element, masterDict)
-####
-####    count = 0
-####    count_all = 0
-####
-####    for element, value in masterDict.items():
-####        print element, value
-
-        
-##        if value[1] > 0.05:
-##            print value
-##            value.append('accepted')
-##            count +=1
-##            posDict[element] = value[0]
-##            # outfile writer if firstpass,   not if secondpass
-##        else :
-##            value.append( 'rejected' )
-##            count_all +=1
-####        print element, value
-##    print count, count_all
-##
-##
-
-##
-##    writtenlist = []
-##    writecount = 0
-##    for element, value in posDict.items():
-##        # write the SNPs to file
-##        if element in inDict1:
-##            writtenlist.append(element)
-####            element[0] == gene,   element[1] == position
-##            outfile.writerow([element[0],element[1], inDict1[element][0],inDict1[element][1],inDict1[element][2],inDict1[element][3],inDict1[element][4],inDict1[element][5]])
-##            resDict[element] = [inDict1[element][0],inDict1[element][1]]
-##            writecount +=1               
-##        if inDict2 != 0 and element in inDict2 and element not in writtenlist:
-##            outfile.writerow([element[0],element[1], inDict2[element][0],inDict2[element][1],inDict2[element][2],inDict2[element][3],inDict2[element][4],inDict2[element][5]])
-##            writtenlist.append(element)
-##            resDict[element] = [inDict2[element][0],inDict2[element][1]]
-##            writecount +=1
-##        if inDict3 != 0 and element in inDict3 and element not in writtenlist:
-##            outfile.writerow([element[0],element[1], inDict3[element][0],inDict3[element][1],inDict3[element][2],inDict3[element][3],inDict3[element][4],inDict3[element][5]])
-##            writtenlist.append(element)
-##            resDict[element] = [inDict3[element][0],inDict3[element][1]]
-##            writecount+=1
-##                
-##
-##
-##
-##    print '[STATUS] %s  SNPs written to file' %(writecount)
-##
-####    # now mask a fasta with this information
-##    try:
-##        if args.fasta != 'none':
-##            with open('%s'%(args.gff),'r') as fasta_raw:
-##                record_dict = SeqIO.index('%s' %(args.fasta), "fasta")
-##                print '[STATUS] Silencing the fasta sequence'
-##                MaskAFasta(resDict,record_dict)
-##                print '[STATUS] Masked Fasta generated'
-##        if args.fasta =='none':
-##            print '[STATUS] No masked Fasta generated'
-##    except:
-##        print '[STATUS] No masked Fasta generated'
-##        
-####
-##
-##
-##    
-
-####class SNP(object):
-####    """
-####a Single Nucleotide polymorphism
-####Has
-####
-####baseclass
-####Attributes:
-####Position  (gene, base)
-####has Original reference Nucleotide
-####has Alternative nucleotide
-####has likelihood to be noise  (negbin(0.014)
-####has likelihood to be homozygous (negbin (0.98))
-####has likelihood to be Allele specific negbin (0.5)
-####    """
-####    def __init__(self,gene,position,ORIG,ALT,count,coverage,likelihoodNoise,likelihoodASE,likelihoodFullSNP):
-####        self.gene = gene
-####        self.position = position
-####        self.orig = ORIG
-####        self.alt = ALT
-####        self.count = count
-####        self.coverage = coverage
-####        self.likelihoodNoise = likelihoodNoise
-####        self.likelihoodASE = likelihoodASE
-####        self.likelihoodFullSNP = likelihoodFullSNP
-####
-####
-####        
-####    def nucleotide(ORIG, ALT)
-####        self
-####    

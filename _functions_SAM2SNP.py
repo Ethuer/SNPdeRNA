@@ -94,7 +94,8 @@ def SAM2SNP(feature,fasta_raw,samfile,gffDict,outfile,cutoff ,spass, createInter
                                     
 ##                        print  SNPindividual, SNPindivdata
                         # this fun returns a dictionary of the possible SNPs with given likelihood and coverage
-                        SNPdata = classifydict(SNPindivdata,0.014, 0.05,100)
+                        # give a hightened minimum threshold for noise clearance
+                        SNPdata = classifydict(SNPindivdata,0.12, 0.05,100)
                          
                         for possibleSNP, possibleContent in SNPdata.items():
                                 position = SNPindividual
