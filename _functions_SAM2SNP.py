@@ -17,7 +17,7 @@ def SAM2SNP(feature,fasta_raw,samfile,gffDict,outfile,cutoff ,spass,errortoleran
         """
 
     wrapper function for coverage analysis of SAM files,
-    returns Dictionary 'transdict' containing SNPs, their coverage
+    returns Dictionary containing SNPs, their coverage
     ... and a precomputed likelihood
     
     This is slow, but steady with the parametric error rate :
@@ -31,11 +31,14 @@ def SAM2SNP(feature,fasta_raw,samfile,gffDict,outfile,cutoff ,spass,errortoleran
     
     
         """
+        
         resultDict ={}
         SNPDict = {}
         transDict = {}
         fastadict = {}
         vcfSubDict = {}
+
+        print len(fasta_raw)
 
         perc_list = []
         
@@ -45,16 +48,17 @@ def SAM2SNP(feature,fasta_raw,samfile,gffDict,outfile,cutoff ,spass,errortoleran
         
         spass = 'No'
 
-        if verbose = True:
+        if verbose == True:
             print "[STATUS] starting Gene-wise coverage analysis .. This may take a while"
             print "[STATUS] 0 percent of %ss analyzed " %(feature)
         
 
         extendedResultsDict = {}
         
-        for element in SeqIO.parse(fasta_raw, "fasta"):
-        
+        for element in fasta_raw:
+            
             for key,value in gffDict.items():
+                print key
                 fastadict = {}
                 count  = 0
             # if on chromosome

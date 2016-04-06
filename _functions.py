@@ -751,26 +751,26 @@ def combineSNPdata(ListMasterdict,ListIndict,NS):
     
 
 
-def add2masterDict(indict, masterdict):
+def add2masterDict(indict, masterdict, NS):
+    
     """
     Extend the MasterDictionary to contain all possible SNPs
     """
-    try:
-        for gene, SNP in indict.items():
-            for SNPpos, details in SNP.items():
-                # NS : Number of Samples
-                NS = 1
-                if gene not in masterdict:
-                    masterdict[gene] = {SNPpos:[indict[gene][SNPpos][0],indict[gene][SNPpos][1],indict[gene][SNPpos][2],indict[gene][SNPpos][3],indict[gene][SNPpos][5],NS]}
-                elif gene in masterdict:
-                    if SNPpos not in masterdict[gene]:
-                        masterdict[gene][SNPpos] = [indict[gene][SNPpos][0],indict[gene][SNPpos][1],indict[gene][SNPpos][2],indict[gene][SNPpos][3],indict[gene][SNPpos][5],NS]
-                    if SNPpos in masterdict[gene]:
-                        NS = masterdict[gene][SNPpos][5]
-                        masterdict[gene][SNPpos] = combineSNPdata(SNPpos,indict[gene][SNPpos],NS)
+
+    for gene, SNP in indict.items():
+        for SNPpos, details in SNP.items():
+            # NS : Number of Samples
+            
+            if gene not in masterdict:
+                masterdict[gene] = {SNPpos:[indict[gene][SNPpos][0],indict[gene][SNPpos][1],indict[gene][SNPpos][2],indict[gene][SNPpos][3],indict[gene][SNPpos][5],NS]}
+            elif gene in masterdict:
+                if SNPpos not in masterdict[gene]:
+                    masterdict[gene][SNPpos] = [indict[gene][SNPpos][0],indict[gene][SNPpos][1],indict[gene][SNPpos][2],indict[gene][SNPpos][3],indict[gene][SNPpos][5],NS]
+                if SNPpos in masterdict[gene]:
+                    NS = masterdict[gene][SNPpos][5]
+                    masterdict[gene][SNPpos] = combineSNPdata(SNPpos,indict[gene][SNPpos],NS)
                         
-    except:
-        pass
+
     return masterdict
 
 
@@ -854,23 +854,54 @@ def extendMasterDict(masterDict,inDict1,inDict2=0,inDict3=0):
       
     return masterDict
     
+# 
+# def populateMasterDict(inDict1,inDict2=0,inDict3=0):
+#     """
+#     Creates the MasterDictionary, and populates it with the keys for SNPS from up to 3 samples
+#     """
+#     masterDict = {}
+#     if inDict2 == 0:
+#         masterDict = add2masterDict(inDict1,masterDict)
+#     if inDict3 == 0:
+#         masterDict = add2masterDict(inDict1,masterDict)
+#         masterDict = add2masterDict(inDict2,masterDict)
+#     else:
+#         masterDict = add2masterDict(inDict1,masterDict)
+#         masterDict = add2masterDict(inDict2,masterDict)
+#         masterDict = add2masterDict(inDict3,masterDict)
+#     
+#     
+#     
+#     
+#     
+#     return masterDict
 
-def populateMasterDict(inDict1,inDict2=0,inDict3=0):
+
+
+def populateMasterDictfromList(inList):
     """
-    Creates the MasterDictionary, and populates it with the keys for SNPS from up to 3 samples
+    Creates the MasterDictionary from a list of Dictionaries
     """
     masterDict = {}
-    if inDict2 == 0:
-        masterDict = add2masterDict(inDict1,masterDict)
-    if inDict3 == 0:
-        masterDict = add2masterDict(inDict1,masterDict)
-        masterDict = add2masterDict(inDict2,masterDict)
-    else:
-        masterDict = add2masterDict(inDict1,masterDict)
-        masterDict = add2masterDict(inDict2,masterDict)
-        masterDict = add2masterDict(inDict3,masterDict)
+    count = 0
+    for element in inList:
+        count +=1
+        masterDict = add2masterDict(element,masterDict, count)
     
+#     if inDict2 == 0:
+#         masterDict = add2masterDict(inDict1,masterDict)
+#     if inDict3 == 0:
+#         masterDict = add2masterDict(inDict1,masterDict)
+#         masterDict = add2masterDict(inDict2,masterDict)
+#     else:
+#         masterDict = add2masterDict(inDict1,masterDict)
+#         masterDict = add2masterDict(inDict2,masterDict)
+#         masterDict = add2masterDict(inDict3,masterDict)
+# 
+#     
     return masterDict
+
+
 
 
 
@@ -890,7 +921,9 @@ from _functions_SAM2SNP import SAM2SNP
 
 def SamImport(bamLocation,SAMList,feature,fasta_raw,gffDict,outfile,cutoff,spass,createIntermediate):
     samfile = pysam.AlignmentFile("%s" %(bamLocation),"rb")
+    
     samDict = {}
-    SAMList = [samDict]
+    SAMList.append(samDict)
     samDict = SAM2SNP(feature,fasta_raw,samfile,gffDict,outfile,cutoff,spass, createIntermediate)
+    
     return samDict,SAMList

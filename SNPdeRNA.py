@@ -105,31 +105,32 @@ parser.add_argument('-origin',
                     )
 
 
-parser.add_argument('-bam1',
-                    dest='bam1',
+parser.add_argument('-bam',
+                    dest='bam',
+                    nargs='+',
                     required = True,
                     default = 0,
-                    help='Input the bam file of the Alignment.  Tophat2 output works,  NextGenMapper or STAR.',
+                    help='Input the bam file(s) of the Alignment.  Tophat2 output works,  NextGenMapper or STAR.',
                     metavar = 'FILE',
                     #type=lambda x: is_valid_file(parser,x)
                     )
 
-parser.add_argument('-bam2',
-                    dest='bam2',
-                    required = False,
-                    default = 0,
-                    help='Additional Input of bam file of the Alignment.  Tophat2 output works,  NextGenMapper or STAR.',
-                    metavar = 'FILE',
-                    #type=lambda x: is_valid_file(parser,x)
-                    )
-
-parser.add_argument('-bam3',
-                    dest='bam3',
-                    required = False,
-                    help='Additional Input of bam file of the Alignment.  Tophat2 output works,  NextGenMapper or STAR.',
-                    metavar = 'FILE',
-                    #type=lambda x: is_valid_file(parser,x)
-                    )
+# parser.add_argument('-bam2',
+#                     dest='bam2',
+#                     required = False,
+#                     default = 0,
+#                     help='Additional Input of bam file of the Alignment.  Tophat2 output works,  NextGenMapper or STAR.',
+#                     metavar = 'FILE',
+#                     #type=lambda x: is_valid_file(parser,x)
+#                     )
+# 
+# parser.add_argument('-bam3',
+#                     dest='bam3',
+#                     required = False,
+#                     help='Additional Input of bam file of the Alignment.  Tophat2 output works,  NextGenMapper or STAR.',
+#                     metavar = 'FILE',
+#                     #type=lambda x: is_valid_file(parser,x)
+#                     )
 
 
 parser.add_argument('-out',
@@ -181,7 +182,7 @@ args = parser.parse_args()
 #####################################################
 
 with open("%s" %(args.fasta), "rU") as fasta_raw, open("%s"%(args.gtf),"r") as gff_raw, open('%s' %(args.out),'w') as out_raw:
-    print '[IMPORT] Loading BAM File %s' %(args.bam1)
+    #print '[IMPORT] Loading BAM File %s' %(args.bam1)
     
     print '[IMPORT] Loading Fasta file %s' %fasta_raw
     print '[IMPORT] Loading GFF/GTF File %s ' %(gff_raw)
@@ -212,13 +213,34 @@ with open("%s" %(args.fasta), "rU") as fasta_raw, open("%s"%(args.gtf),"r") as g
 
     # Starting SNPdeRNA,     First step,  open files
     SAMList = []
-
+    
+    # list of dictionaries containing the pre-screened snips 
+    dictList = []
     # one BAM file is essential
     ## CATCH EXCEPTION for missing indexing file
 
-
+    # parse the fasta file before the Sam invocation 
+    fastaDict = []
+    for record in SeqIO.parse(fasta_raw, "fasta"):
+        fastaDict.append(record)
     
 
+
+    verbose = True
+    errortolerance = 0.12
+    createIntermediate = False
+
+
+    bamCount = 0
+
+    for bamFile in args.bam:     
+        SAMList.append(bamFile)
+        
+        samDict,SAMList = SamImport(bamFile,SAMList,args.feature,fastaDict,gffDict,outfile,cutoff,args.spass,errortolerance )
+        dictList.append(samDict)
+        samDict = {}
+        bamCount +=1
+    print len(dictList)
 ## Import functions for the indicidual bam files,  
 ## this should be made more flexible for multiple bam imports without necessitating enumeration by the user
 ##    try:
@@ -227,46 +249,50 @@ with open("%s" %(args.fasta), "rU") as fasta_raw, open("%s"%(args.gtf),"r") as g
 ##        samDict1 = {}
 ##        SAMList = [samDict1]
 ##        samDict1 = SAM2SNP(args.feature,fasta_raw,samfile1,gffDict,outfile,cutoff,args.spass, createIntermediate)
-    samDict1,SAMList = SamImport(args.bam1,SAMList,args.feature,fasta_raw,gffDict,outfile,cutoff,args.spass,createIntermediate)
-
-##            ,feature,fasta_raw,gffDict,outfile,cutoff,spass,createIntermediate
-##    except:
-##        print '[ERROR] Read the replicate 1 incorrectly, please verify that the format is correct, and the file exists'
-##        print '[ASSISTANCE] Most common error is missing index file from BAM input.  '
-##        print '[ASSISTANCE] Attempting to create index file from here.'
-##        try:
-##            commandLine = 'samtools index %s' %(args.bam1)
-##            os.system(commandLine)
-##
-##            # wait until this finishes
-##            samDict1,SAMList = SamImport(args.bam1,SAMList)
-##
-##
-##            # wait until this finishes, then continue
-##
-##        except:
-##            print '[ERROR] Read the replicate 1 incorrectly, please verify that the format is correct, and the file exists'
-##            exit
-            
     
-    try:
-        samfile2 = pysam.AlignmentFile("%s" %(args.bam2),"rb")
-        samDict2 = {}
-        samDict2 = SAM2SNP(args.feature,fasta_raw,samfile2,gffDict,outfile,cutoff,args.spass, createIntermediate)
-        SAMList.append(samDict2)
-    except:
-        samDict2 = 0
-        print '[OPEN] No replicate 2 ?  Valiadation would greatly profit from a second bam file'
-        pass
-
-    try:
-        samfile3 = pysam.AlignmentFile("%s" %(args.bam3),"rb")
-        samDict3 = {}
-        samDict3 = SAM2SNP(args.feature,fasta_raw,samfile3,gffDict,outfile,cutoff,args.spass, createIntermediate)
-        SAMList.append(samDict3)
-    except:
-        samDict3 = 0
-        pass
+#     print 'Starting samImport'
+#     samDict1,SAMList = SamImport(args.bam1,SAMList,args.feature,fasta_raw,gffDict,outfile,cutoff,args.spass,errortolerance )
+#     print len(samDict1)
+# ##            ,feature,fasta_raw,gffDict,outfile,cutoff,spass,createIntermediate
+# ##    except:
+# ##        print '[ERROR] Read the replicate 1 incorrectly, please verify that the format is correct, and the file exists'
+# ##        print '[ASSISTANCE] Most common error is missing index file from BAM input.  '
+# ##        print '[ASSISTANCE] Attempting to create index file from here.'
+# ##        try:
+# ##            commandLine = 'samtools index %s' %(args.bam1)
+# ##            os.system(commandLine)
+# ##
+# ##            # wait until this finishes
+# ##            samDict1,SAMList = SamImport(args.bam1,SAMList)
+# ##
+# ##
+# ##            # wait until this finishes, then continue
+# ##
+# ##        except:
+# ##            print '[ERROR] Read the replicate 1 incorrectly, please verify that the format is correct, and the file exists'
+# ##            exit
+#             
+#     
+#     try:
+#         samfile2 = pysam.AlignmentFile("%s" %(args.bam2),"rb")
+#         samDict2 = {}
+#         samDict2 = SAM2SNP(args.feature,fasta_raw,samfile2,gffDict,outfile,cutoff,args.spass, errortolerance  )
+#         SAMList.append(samDict2)
+#     except:
+#         samDict2 = 0
+#         print '[OPEN] No replicate 2 ?  Valiadation would greatly profit from a second bam file'
+#         pass
+# 
+#     try:
+#         print "running sample3"
+#         samfile3 = pysam.AlignmentFile("%s" %(args.bam3),"rb")
+#         samDict3 = {}
+#         samDict3 = SAM2SNP(args.feature,fasta_raw,samfile3,gffDict,outfile,cutoff,args.spass,errortolerance  )
+#         SAMList.append(samDict3)
+#         print "finished sample3"
+#     except:
+#         samDict3 = 0
+#         pass
 
 ##    SAMresultsCount(samDict1,samDict2,samDict3,verbose = True)
 ##
@@ -326,7 +352,14 @@ with open("%s" %(args.fasta), "rU") as fasta_raw, open("%s"%(args.gtf),"r") as g
     # e.g
 ##  CHROM POS    ID        REF  ALT     QUAL FILTER INFO                              FORMAT      Sample1        Sample2        Sample3
 ##    2      4370   rs6057    G    A       29   .      NS=2;DP=13;AF=0.5;DB;H2           GT:GQ:DP:HQ 0|0:48:1:52,51 1|0:48:8:51,51 1/1:43:5:.,.
-    masterDict = populateMasterDict(samDict1,samDict2,samDict3) 
+    # masterDict = populateMasterDict(samDict1,samDict2,samDict3) 
+    for element in dictList:
+        print len(element)
+        
+    
+    masterDict = populateMasterDictfromList(dictList)
+
+    print len(masterDict)
 
     print 'masterDict with %s' %(len(masterDict))
     for element,val in masterDict.items():
