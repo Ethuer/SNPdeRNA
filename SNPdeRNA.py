@@ -6,7 +6,7 @@ import os.path
 import os
 from _functions import *
 from _functions_SAM2SNP import SAM2SNP
-from _functions_SNP2Quant import FischerCombineP
+#from _functions_SNP2Quant import FischerCombineP
 import pysam
 from Bio import SeqIO
 from Bio.Seq import Seq
@@ -18,7 +18,7 @@ import sys,argparse
 import os.path
 
 
-import thread
+#import thread
 
 
 ##
@@ -46,6 +46,10 @@ import thread
 # add the SAM2SNP first, move as much as possible to _functions
 
 def writeVCFormat(masterDict,outfile,convDict):
+    
+    """
+    Simple output for vcf like format based on cvs reader / writer functions
+    """
     #write Header
 
     for gene, SNPs in masterDict.items():
@@ -53,14 +57,20 @@ def writeVCFormat(masterDict,outfile,convDict):
 
         for SNP, info in SNPs.items():
             POS = SNP
-            ID = '%s_%s'%(gene,POS)
+            ID = '%s_%i' %(gene,int(POS))
             REF = info[0]
             ALT = info[1]
             QUAL = 30
             Filter = '.'
             INFO = 'NS=%s;DP=%s' %(info[5],info[2])
+            
+            outrow = []
+            for elmnt in CHROM,POS,ID,REF,ALT,QUAL,Filter,INFO:
+                
+                # elmnt = elmnt.replace('"','')
+                outrow.append(elmnt)
         
-            outfile.writerrow([CHROM,POS,ID[0],REF,ALT,QUAL,Filter,INFO[0]])
+            outfile.writerow(outrow)
 
 
 
@@ -178,7 +188,7 @@ with open("%s" %(args.fasta), "rU") as fasta_raw, open("%s"%(args.gtf),"r") as g
     print '[IMPORT] Loading Complete.'
     
     gff_file = csv.reader(gff_raw, delimiter = '\t')
-    outfile = csv.writer(out_raw, delimiter = '\t')
+    outfile = csv.writer(out_raw, delimiter = '\t', quoting=csv.QUOTE_NONE, quotechar='')
     cutoff = float(args.minqual)
     origin = args.origin
     createIntermediate = False
@@ -209,6 +219,8 @@ with open("%s" %(args.fasta), "rU") as fasta_raw, open("%s"%(args.gtf),"r") as g
 
     
 
+## Import functions for the indicidual bam files,  
+## this should be made more flexible for multiple bam imports without necessitating enumeration by the user
 ##    try:
         
 ##        samfile1 = pysam.AlignmentFile("%s" %(args.bam1),"rb")
@@ -426,6 +438,6 @@ with open("%s" %(args.fasta), "rU") as fasta_raw, open("%s"%(args.gtf),"r") as g
 ##            Full = perc[3]
 
 
-            probabil = FischerCombineP(probDict[gene])
+            #probabil = FischerCombineP(probDict[gene])
             print gene , '  ASE probability ', probabil 
 
