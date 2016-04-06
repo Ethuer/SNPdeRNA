@@ -13,12 +13,23 @@ import re
 import csv
 
 
-def SAM2SNP(feature,fasta_raw,samfile,gffDict,outfile,cutoff ,spass, createIntermediate = False):
+def SAM2SNP(feature,fasta_raw,samfile,gffDict,outfile,cutoff ,spass,errortolerance = 0.12, verbose = True, createIntermediate = False):
         """
 
     wrapper function for coverage analysis of SAM files,
     returns Dictionary 'transdict' containing SNPs, their coverage
     ... and a precomputed likelihood
+    
+    This is slow, but steady with the parametric error rate :
+    
+    Work-flow description:
+    mpileup is used to obtain coverage of nucleotides that differ to the reference
+    
+    noise classification is computed against a negative binomial distribution.
+    
+    computes synonymity of the change in base composition by extracting local codon.
+    
+    
         """
         resultDict ={}
         SNPDict = {}
@@ -34,9 +45,10 @@ def SAM2SNP(feature,fasta_raw,samfile,gffDict,outfile,cutoff ,spass, createInter
         
         spass = 'No'
 
+        if verbose = True:
+            print "[STATUS] starting Gene-wise coverage analysis .. This may take a while"
+            print "[STATUS] 0 percent of %ss analyzed " %(feature)
         
-        print "[STATUS] starting Gene-wise coverage analysis .. This may take a while"
-        print "[STATUS] 0 percent of %ss analyzed " %(feature)
 
         extendedResultsDict = {}
         
@@ -75,10 +87,6 @@ def SAM2SNP(feature,fasta_raw,samfile,gffDict,outfile,cutoff ,spass, createInter
                         print 'Error in translating Protein %s' %(element.id)
 
                     
-##                    alternativeSeq = MutableSeq(str(element.seq[start:stop]), generic_dna)
-##                    alternativeSeq = mutateSequence(alternativeSeq,gene,nucleotide,start)
-##                    alternativeSeq = Seq(str(alternativeSeq), generic_dna)
-##                    print len(protein),len(aternativeSeq)
                 
                 # print gene count in percent of features  every 10 percent
                     getPercentage(genecount,len(gffDict),feature,perc_list)
@@ -95,7 +103,7 @@ def SAM2SNP(feature,fasta_raw,samfile,gffDict,outfile,cutoff ,spass, createInter
 ##                        print  SNPindividual, SNPindivdata
                         # this fun returns a dictionary of the possible SNPs with given likelihood and coverage
                         # give a hightened minimum threshold for noise clearance
-                        SNPdata = classifydict(SNPindivdata,0.12, 0.05,100)
+                        SNPdata = classifydict(SNPindivdata,errortolerance, 0.05,100)
                          
                         for possibleSNP, possibleContent in SNPdata.items():
                                 position = SNPindividual
@@ -133,7 +141,7 @@ def findCodon(NuclPos, ALT, Modulo, sequenceDict):
         Could be simplified, but that is quite self explanatory.
         recreate the new codon, translate.
 
-        Modulo 0,   posiiton divisible by 3, so SNP is in the 0 position. Memento Python .
+        Modulo 0,   position divisible by 3, so SNP is in the 0 position. Memento Python .
         Modulo 1,   position has 1 residue, so SNP is at pos 1 == 2nd posiion on codon.
         """
         codon = ['N','N','N']
