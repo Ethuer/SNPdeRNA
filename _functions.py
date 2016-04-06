@@ -779,7 +779,7 @@ def combineSNPdata(ListMasterdict,ListIndict):
 def add2masterDict(indict, masterdict):
     
     """
-    Extend the MasterDictionary to contain all possible SNPs
+    Extend the MasterDictionary to contain all possible SNPs,  
     """
 
     for gene, SNP in indict.items():
@@ -787,20 +787,19 @@ def add2masterDict(indict, masterdict):
             # NS : Number of Samples set to 1 for initialisation, this is incremented later
             NS = 1
             
-            if gene not in masterdict:
-                masterdict[gene] = {SNPpos:[indict[gene][SNPpos][0],indict[gene][SNPpos][1],indict[gene][SNPpos][2],indict[gene][SNPpos][3],indict[gene][SNPpos][5],NS]}
+
             if gene in masterdict:
-                if SNPpos not in masterdict[gene]:
-                    masterdict[gene][SNPpos] = [indict[gene][SNPpos][0],indict[gene][SNPpos][1],indict[gene][SNPpos][2],indict[gene][SNPpos][3],indict[gene][SNPpos][5],NS]
+
                 if SNPpos in masterdict[gene]:
-                    
-                    
                     #NS = masterdict[gene][SNPpos][5]
                     
-                    # Why is this not redundant ? 
                     if masterdict[gene][SNPpos]:
                         masterdict[gene][SNPpos] = combineSNPdata(masterdict[gene][SNPpos],indict[gene][SNPpos])
                         
+                if SNPpos not in masterdict[gene]:
+                    masterdict[gene][SNPpos] = [indict[gene][SNPpos][0],indict[gene][SNPpos][1],indict[gene][SNPpos][2],indict[gene][SNPpos][3],indict[gene][SNPpos][5],NS]       
+            if gene not in masterdict:
+                masterdict[gene] = {SNPpos:[indict[gene][SNPpos][0],indict[gene][SNPpos][1],indict[gene][SNPpos][2],indict[gene][SNPpos][3],indict[gene][SNPpos][5],NS]}            
 
     return masterdict
 
