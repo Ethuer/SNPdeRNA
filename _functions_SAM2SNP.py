@@ -38,7 +38,7 @@ def SAM2SNP(feature,fasta_raw,samfile,gffDict,outfile,cutoff ,spass,errortoleran
         fastadict = {}
         vcfSubDict = {}
 
-        print len(fasta_raw)
+        
 
         perc_list = []
         
@@ -58,7 +58,7 @@ def SAM2SNP(feature,fasta_raw,samfile,gffDict,outfile,cutoff ,spass,errortoleran
         for element in fasta_raw:
             
             for key,value in gffDict.items():
-                print key
+                
                 fastadict = {}
                 count  = 0
             # if on chromosome

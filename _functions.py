@@ -716,42 +716,67 @@ def MaskAFasta (silenceDictionary, fastaDictionary, outHandle):
         SeqIO.write(out_seqs, outHandle, "fasta")
             
 
-def combineSNPdata(ListMasterdict,ListIndict,NS):
+def combineSNPdata(ListMasterdict,ListIndict):
+    """
+    Combine SNP data in the following fashion:
+    gene and position have to be ident, obviously
+    
+    ALT coverage will be combined, 
+    REF coverage will also be combined. 
+    # optionally, low coverage areas should be sum(ALT) but add(REF)
+    the Number of Samples will be incremented for new observations
+
+
+    if the ALT bases are different, the one with the higher coverage will be used
+    """
+    
     outList = []
     outList_alt = ['0']
+    
+    
     ##            ORIG,ALT,SNPcov,Basecov,synonym
     # possible cases:   alt overlap, simple addition
     # index 0 should always overlap. since it's the same fasta reference
     if ListIndict[0] == ListMasterdict[0] and ListIndict[1] == ListMasterdict[1]:
-        NS +=1
-        outList[0] = ListIndict[0]
-        outList[1] = ListIndict[1]
-        outList[2] = int(ListIndict[2]) + int(ListMasterdict[2])
-        outList[3] = int(ListIndict[3]) + int(ListMasterdict[3])
-        outList[4] = ListIndict[4]
-        outList[5] = NS
+        
+        outList.append(ListIndict[0])
+        outList.append(ListIndict[1])
+        combCount = int(ListIndict[2]) + int(ListMasterdict[2])
+        outList.append(combCount)
+        combTotal = int(ListIndict[3]) + int(ListMasterdict[3])
+        
+        outList.append(combTotal) 
+        outList.append(ListIndict[4])
+        
+        # increment the number of samples by the new observation
+        NS = int(ListMasterdict[5]) + 1
+        outList.append(NS)
 
     # different alternative SNP    create a list of 2x length, the bigger coverage first, and seperate at the writing function
+    
     if ListIndict[1] != ListMasterdict[1]:
         if int(ListMasterdict[2]) > int(ListIndict[2]):
             outList = ListMasterdict
-            for element in ListIndict:
-                outlist.append(element)
+#             for element in ListIndict:
+#                 outlist.append(element)
 
             
         if int(ListIndict[2]) > int(ListMasterdict[2]):
+            NS = 1
             outList = ListIndict
-            for element in ListMasterDict:
-                outlist.append(element)
+            outlist.append(NS)
+#             for element in ListMasterDict:
+#                 outlist.append(element)
         
 
-    if outList_alt[0] != '0' :    
-        return outList, outList_alt
+    if outList[0] != '0' :    
+        #print outList
+        return outList #, outList_alt
 ##        Basecov    
     
 
 
-def add2masterDict(indict, masterdict, NS):
+def add2masterDict(indict, masterdict):
     
     """
     Extend the MasterDictionary to contain all possible SNPs
@@ -759,16 +784,22 @@ def add2masterDict(indict, masterdict, NS):
 
     for gene, SNP in indict.items():
         for SNPpos, details in SNP.items():
-            # NS : Number of Samples
+            # NS : Number of Samples set to 1 for initialisation, this is incremented later
+            NS = 1
             
             if gene not in masterdict:
                 masterdict[gene] = {SNPpos:[indict[gene][SNPpos][0],indict[gene][SNPpos][1],indict[gene][SNPpos][2],indict[gene][SNPpos][3],indict[gene][SNPpos][5],NS]}
-            elif gene in masterdict:
+            if gene in masterdict:
                 if SNPpos not in masterdict[gene]:
                     masterdict[gene][SNPpos] = [indict[gene][SNPpos][0],indict[gene][SNPpos][1],indict[gene][SNPpos][2],indict[gene][SNPpos][3],indict[gene][SNPpos][5],NS]
                 if SNPpos in masterdict[gene]:
-                    NS = masterdict[gene][SNPpos][5]
-                    masterdict[gene][SNPpos] = combineSNPdata(SNPpos,indict[gene][SNPpos],NS)
+                    
+                    
+                    #NS = masterdict[gene][SNPpos][5]
+                    
+                    # Why is this not redundant ? 
+                    if masterdict[gene][SNPpos]:
+                        masterdict[gene][SNPpos] = combineSNPdata(masterdict[gene][SNPpos],indict[gene][SNPpos])
                         
 
     return masterdict
@@ -883,10 +914,10 @@ def populateMasterDictfromList(inList):
     Creates the MasterDictionary from a list of Dictionaries
     """
     masterDict = {}
-    count = 0
+    
     for element in inList:
-        count +=1
-        masterDict = add2masterDict(element,masterDict, count)
+        
+        masterDict = add2masterDict(element,masterDict)
     
 #     if inDict2 == 0:
 #         masterDict = add2masterDict(inDict1,masterDict)

@@ -42,7 +42,7 @@ import os.path
 ##    return combined_prob
 
 
-# Unification of the 2 remaining scripts,
+
 # add the SAM2SNP first, move as much as possible to _functions
 
 def writeVCFormat(masterDict,outfile,convDict):
@@ -240,69 +240,13 @@ with open("%s" %(args.fasta), "rU") as fasta_raw, open("%s"%(args.gtf),"r") as g
         dictList.append(samDict)
         samDict = {}
         bamCount +=1
-    print len(dictList)
+    
 ## Import functions for the indicidual bam files,  
 ## this should be made more flexible for multiple bam imports without necessitating enumeration by the user
 ##    try:
         
-##        samfile1 = pysam.AlignmentFile("%s" %(args.bam1),"rb")
-##        samDict1 = {}
-##        SAMList = [samDict1]
-##        samDict1 = SAM2SNP(args.feature,fasta_raw,samfile1,gffDict,outfile,cutoff,args.spass, createIntermediate)
-    
-#     print 'Starting samImport'
-#     samDict1,SAMList = SamImport(args.bam1,SAMList,args.feature,fasta_raw,gffDict,outfile,cutoff,args.spass,errortolerance )
-#     print len(samDict1)
-# ##            ,feature,fasta_raw,gffDict,outfile,cutoff,spass,createIntermediate
-# ##    except:
-# ##        print '[ERROR] Read the replicate 1 incorrectly, please verify that the format is correct, and the file exists'
-# ##        print '[ASSISTANCE] Most common error is missing index file from BAM input.  '
-# ##        print '[ASSISTANCE] Attempting to create index file from here.'
-# ##        try:
-# ##            commandLine = 'samtools index %s' %(args.bam1)
-# ##            os.system(commandLine)
-# ##
-# ##            # wait until this finishes
-# ##            samDict1,SAMList = SamImport(args.bam1,SAMList)
-# ##
-# ##
-# ##            # wait until this finishes, then continue
-# ##
-# ##        except:
-# ##            print '[ERROR] Read the replicate 1 incorrectly, please verify that the format is correct, and the file exists'
-# ##            exit
-#             
-#     
-#     try:
-#         samfile2 = pysam.AlignmentFile("%s" %(args.bam2),"rb")
-#         samDict2 = {}
-#         samDict2 = SAM2SNP(args.feature,fasta_raw,samfile2,gffDict,outfile,cutoff,args.spass, errortolerance  )
-#         SAMList.append(samDict2)
-#     except:
-#         samDict2 = 0
-#         print '[OPEN] No replicate 2 ?  Valiadation would greatly profit from a second bam file'
-#         pass
-# 
-#     try:
-#         print "running sample3"
-#         samfile3 = pysam.AlignmentFile("%s" %(args.bam3),"rb")
-#         samDict3 = {}
-#         samDict3 = SAM2SNP(args.feature,fasta_raw,samfile3,gffDict,outfile,cutoff,args.spass,errortolerance  )
-#         SAMList.append(samDict3)
-#         print "finished sample3"
-#     except:
-#         samDict3 = 0
-#         pass
-
-##    SAMresultsCount(samDict1,samDict2,samDict3,verbose = True)
-##
-
-    
-
     # Now starts the SNP2Quant part
     # with the vcf like dictionaries loaded as samDict 1 to 3
-
-
 
 
     resDict = {}
@@ -353,18 +297,17 @@ with open("%s" %(args.fasta), "rU") as fasta_raw, open("%s"%(args.gtf),"r") as g
 ##  CHROM POS    ID        REF  ALT     QUAL FILTER INFO                              FORMAT      Sample1        Sample2        Sample3
 ##    2      4370   rs6057    G    A       29   .      NS=2;DP=13;AF=0.5;DB;H2           GT:GQ:DP:HQ 0|0:48:1:52,51 1|0:48:8:51,51 1/1:43:5:.,.
     # masterDict = populateMasterDict(samDict1,samDict2,samDict3) 
-    for element in dictList:
-        print len(element)
+
         
     
     masterDict = populateMasterDictfromList(dictList)
 
-    print len(masterDict)
-
-    print 'masterDict with %s' %(len(masterDict))
-    for element,val in masterDict.items():
-        print element,val
     
+    print 'masterDict with %s' %(len(masterDict))
+    
+    for key, value in masterDict.items():
+        print key, value
+        
 
 
     if writeout == True:
@@ -391,7 +334,7 @@ with open("%s" %(args.fasta), "rU") as fasta_raw, open("%s"%(args.gtf),"r") as g
 
     if args.spass == 'No' and args.fastaOut != 'none' :
         print '[STATUS] Writing masked fasta file '
-        print '[STATUS] Please use this as a new reference to eleminate alignment derived errors'
+        print '[STATUS] Please use this as a new reference, to eliminate alignment derived errors'
         
         if args.fasta != 'none':
             with open('%s'%(args.fastaOut),'w') as fasta_raw:
