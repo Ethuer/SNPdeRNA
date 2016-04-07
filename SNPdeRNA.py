@@ -331,11 +331,12 @@ with open("%s" %(args.fasta), "rU") as fasta_raw, open("%s"%(args.gtf),"r") as g
     # masterDict = populateMasterDict(samDict1,samDict2,samDict3) 
 
         
+    # additional reference Dictionary, refDict is needed, for a universal classification approach.
+    # this refDict will be repopulated later, only contains the pointers to the SNPs
     
-    masterDict = populateMasterDictfromList(dictList)
+    
+    masterDict, refDict = populateMasterDictfromList(dictList)
 
-    
-    print 'masterDict with %s' %(len(masterDict))
     
 #     for key, value in masterDict.items():
 #         print key, value
@@ -398,62 +399,81 @@ with open("%s" %(args.fasta), "rU") as fasta_raw, open("%s"%(args.gtf),"r") as g
 
     # populate masterdict to randomized resampling ??
     # deconstruct the master dictionary into an empty template Dict containing only SNP positions 
-    if args.spass != 'No' :
+    
+    # create template Master Dictionary
+    # current masterDict is a dict of dicts, needs to unravel
+   
+        
+    
+    repeats = 20
+    
+    
+    if args.spass == 'No' :
      
-        masterDictResample = extendMasterDict(masterDict,dictList)
+        masterDictResample = extendMasterDictbyResampling(refDict,dictList, repeats)
+        
+#         for element, value in masterDictResample.items():
+#             print element, value
+#             for val, bins in value.items():
+#                 for bin in bins:
+#                     if int(bin) < 40:
+#                         print bin
         
         #  check normalisation procedures   important for noise classification,
-        # using random resampling might be good to get a view
+        # using random resampling might be good remove relative error from normalisation, and stabilize lack of replicates
         # implement SLP here for classification
-
-
-
-    # extended Masterdict for binomial testing
-        resDict = {}
-        total = 100
-        for masDictgene, masDictSNPs in masterDictResample.items():
-            for SNPpos, SNPdata in masDictSNPs.items():
-                elementcount = 0
-                if masDictgene not in resDict:
-                    resDict[masDictgene] = {SNPpos: []}
-                else:
-                    resDict[masDictgene][SNPpos] = []
-
-            # Check if it is Noise
-                elementcount = 0
-
-            # create small dictionary, and unify the p values with Fischers 
-            # Fischers test is insufficient for the question at hand
-            # Try implementing a Single Layer Perceptron
-                for element in SNPdata:
-                    NoiseProb = distFunNegBin(100,int(element),0.02)
-
-
-            # Check if it is a full SNP
-                    negative = total - int(element)
-
-                    FullProb = distFunNegBin(100,negative,0.02)
-                        
-            # Check for Allele Specific expression
-                    ASEprob = pmfNegBin(total,element,0.5)
-            
-                    resDict[masDictgene][SNPpos].append(NoiseProb)
-                    resDict[masDictgene][SNPpos].append(ASEprob)
-                    resDict[masDictgene][SNPpos].append(FullProb)
-
-                    elementcount +=1
-
-        probDict = {}
-        for gene, value in resDict.items():
-            probDict[gene] = []
-            for SNP, perc in value.items():
-##            print gene, SNP, perc[0], perc[1],perc[3]
-##            Noise = perc[0]
-                probDict[gene].append(perc[1])
-                ASE = perc[1]
-##            Full = perc[3]
-
-
-            #probabil = FischerCombineP(probDict[gene])
-            print gene , '  ASE probability ', probabil 
+        
+        # first catch hypothesis,  expected distribution, likelyhood of being part of that distribution and where to update Theta
+        
+# 
+# 
+# 
+#     # extended Masterdict for binomial testing
+#         resDict = {}
+#         total = 100
+#         for masDictgene, masDictSNPs in masterDictResample.items():
+#             for SNPpos, SNPdata in masDictSNPs.items():
+#                 elementcount = 0
+#                 if masDictgene not in resDict:
+#                     resDict[masDictgene] = {SNPpos: []}
+#                 else:
+#                     resDict[masDictgene][SNPpos] = []
+# 
+#             # Check if it is Noise
+#                 elementcount = 0
+# 
+#             # create small dictionary, and unify the p values with Fischers 
+#             # Fischers test is insufficient for the question at hand
+#             # Try implementing a Single Layer Perceptron
+#                 for element in SNPdata:
+#                     NoiseProb = distFunNegBin(100,int(element),0.02)
+# 
+# 
+#             # Check if it is a full SNP
+#                     negative = total - int(element)
+# 
+#                     FullProb = distFunNegBin(100,negative,0.02)
+#                         
+#             # Check for Allele Specific expression
+#                     ASEprob = pmfNegBin(total,element,0.5)
+#             
+#                     resDict[masDictgene][SNPpos].append(NoiseProb)
+#                     resDict[masDictgene][SNPpos].append(ASEprob)
+#                     resDict[masDictgene][SNPpos].append(FullProb)
+# 
+#                     elementcount +=1
+# 
+#         probDict = {}
+#         for gene, value in resDict.items():
+#             probDict[gene] = []
+#             for SNP, perc in value.items():
+# ##            print gene, SNP, perc[0], perc[1],perc[3]
+# ##            Noise = perc[0]
+#                 probDict[gene].append(perc[1])
+#                 ASE = perc[1]
+# ##            Full = perc[3]
+# 
+# 
+#             #probabil = FischerCombineP(probDict[gene])
+#             print gene , '  ASE probability ', probabil 
 

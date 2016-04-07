@@ -531,8 +531,8 @@ Just compare reference,  most likely SNP and probability that this is at least h
 
 def secondlargest(largest,allDict):
     """
-finding the second largest item
-"""
+    finding the second largest item
+    """
     subDict = {}
     for element, values in allDict.items():
         if not element == largest:
@@ -802,7 +802,36 @@ def add2masterDict(indict, masterdict):
                 masterdict[gene] = {SNPpos:[indict[gene][SNPpos][0],indict[gene][SNPpos][1],indict[gene][SNPpos][2],indict[gene][SNPpos][3],indict[gene][SNPpos][5],NS]}            
 
     return masterdict
-
+ 
+def add2RefDict(indict, refDict):
+     
+    """
+    Extend the Reference Dictionary to contain location information for all possible SNPs
+    refDict only needs to contain unique identifiers and positions as well as initialized empty lists
+     
+    """
+ 
+    for gene, SNP in indict.items():
+        for SNPpos, details in SNP.items():
+             
+            # NS : Number of Samples set to 1 for initialisation, this is incremented later
+            NS = 1
+             
+ 
+            if gene in refDict:
+ 
+                if SNPpos in refDict[gene]:
+                    #NS = masterdict[gene][SNPpos][5]
+                     
+                    if refDict[gene][SNPpos]:
+                        refDict[gene][SNPpos] = []
+                         
+                if SNPpos not in refDict[gene]:
+                    refDict[gene][SNPpos] = []   
+            if gene not in refDict:
+                refDict[gene] = {SNPpos:[]}            
+ 
+    return refDict
 
 
 def binning(inDict, masterDict):
@@ -847,7 +876,7 @@ def binning(inDict, masterDict):
 
     return masterDict
 
-def binningResampling(inDict, masterDict):
+def binningMonteCarlo(inDict, masterDict):
     """
     Appends the SNP count in the individual observations to the MasterDictionary
     This improves the parametric classification.
@@ -880,11 +909,13 @@ def binningResampling(inDict, masterDict):
 
 
                 
+            # penalize lack of coverage by adding a minimum of 100
             if totalCoverage < 100:
                 totalCoverage = 100
 
             count = 0
-        # now create bins,  randomly draw from one sample 50 times (of whole coverage) and store how many SNPSs you get
+        # now create bins,  randomly draw from one sample 100 times (of whole coverage) and store how many SNPSs you get
+        # this is equal to a normalization by turning measurements into percentages of total
             for repeat in range(0, 100):
                 choice = random.randrange(0,int(totalCoverage))
             
@@ -965,13 +996,16 @@ def extendMasterDictbyResampling(masterDict,ListofDictionaries, repeats ):
     the original master dictionary is taken and filled with observations from 
     randomly drawn samples 
     
+    sampling takes random observations, converts to percent of total coverage of the highest expressed variable
+    
     """
     for repeat in range(0,repeats):
 
         chosenOne = random.choice(ListofDictionaries)
     
-        masterDict = binning(chosenOne, masterDict)
-    
+        masterDict = binningMonteCarlo(chosenOne, masterDict)
+        
+        
     return masterDict
 
 
@@ -983,11 +1017,11 @@ def populateMasterDictfromList(inList):
     Creates the MasterDictionary from a list of Dictionaries
     """
     masterDict = {}
-    
+    refDict = {}
     for element in inList:
         
         masterDict = add2masterDict(element,masterDict)
-    
+        refDict = add2RefDict(element, refDict)
 #     if inDict2 == 0:
 #         masterDict = add2masterDict(inDict1,masterDict)
 #     if inDict3 == 0:
@@ -999,9 +1033,7 @@ def populateMasterDictfromList(inList):
 #         masterDict = add2masterDict(inDict3,masterDict)
 # 
 #     
-    return masterDict
-
-
+    return masterDict, refDict
 
 
 
