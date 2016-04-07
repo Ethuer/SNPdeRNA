@@ -41,6 +41,38 @@ import os.path
 ##
 ##    return combined_prob
 
+def SLPClassification(ObservList, weightList, Theta):
+    """
+    simple implementation of linear classification algorithm 
+    It's a simple formula that only permits linear classification, 
+    In the case of noise or occurence, only one dimensional data is available.
+    
+    observList is a list of observations,  in this case most likely probabilities from a negative binomial distribution
+    
+    weightList refers to a list of weights applied to the observations.
+    Theta is the threshold level, this has to be kept as a global variable to keep it dynamic
+    
+    TrueList is the weight corrected observationList
+    
+    Returns the Classification variable  Yes (1) or No (0)
+    
+    """
+    
+    TrueList = []
+    count = 0
+    for element in ObservList:
+        
+        element = float(element)*float(weightList[count])
+        TrueList.append(element)
+    
+    obserVar = sum(TrueList)
+
+    if float(obserVar) < float(Theta):
+        Classification = 0
+        
+    if float(obserVar) >= float(Theta):
+        Classification = 1
+    return Classification
 
 
 # add the SAM2SNP first, move as much as possible to _functions
@@ -110,7 +142,7 @@ parser.add_argument('-bam',
                     nargs='+',
                     required = True,
                     default = 0,
-                    help='Input the bam file(s) of the Alignment.  Tophat2 output works,  NextGenMapper or STAR.',
+                    help='Input the bam file(s) of the Alignment.  Tophat2 output works,  NextGenMapper or STAR.  Bam files need to be indexed using "samtools index" ',
                     metavar = 'FILE',
                     #type=lambda x: is_valid_file(parser,x)
                     )
@@ -305,15 +337,15 @@ with open("%s" %(args.fasta), "rU") as fasta_raw, open("%s"%(args.gtf),"r") as g
     
     print 'masterDict with %s' %(len(masterDict))
     
-    for key, value in masterDict.items():
-        print key, value
+#     for key, value in masterDict.items():
+#         print key, value
         
 
 
-    if writeout == True:
-        print '[STATUS] Writing VCF file to %s' %(args.out)
-        ## initiate writefunction
-        writeVCFormat(masterDict,outfile,convDict)
+#     if writeout == True:
+#         print '[STATUS] Writing VCF file to %s' %(args.out)
+#         ## initiate writefunction
+#         writeVCFormat(masterDict,outfile,convDict)
 
     print '[STATUS] Creating and populating Dictionaries'
 
@@ -331,6 +363,9 @@ with open("%s" %(args.fasta), "rU") as fasta_raw, open("%s"%(args.gtf),"r") as g
             silenceDict[silencePOS] = convDict[silenceGene]
 
     # Start classifying SNPs as ASE, and mutate fasta
+    
+    args.spass = 'No'
+    
 
     if args.spass == 'No' and args.fastaOut != 'none' :
         print '[STATUS] Writing masked fasta file '
@@ -350,20 +385,26 @@ with open("%s" %(args.fasta), "rU") as fasta_raw, open("%s"%(args.gtf),"r") as g
     ### INITIATE REMAPPING IF POSSIBLE
         
 
+    # option to write output so far to file, for a vcf like intermediate output 
+    # This should be discouraged
+
     writeToFile = True
     if writeToFile == True:
-        print '[STATUS] writing vcf like intermediate output'
+        print '[STATUS] writing vcf-like intermediate output'
 
-   # implement writetofile option here
-
+   
     
     # lets get to the quantification
 
     # populate masterdict to randomized resampling ??
-
+    # deconstruct the master dictionary into an empty template Dict containing only SNP positions 
     if args.spass != 'No' :
      
-        masterDictResample = extendMasterDict(masterDict,samDict1,samDict2,samDict3)
+        masterDictResample = extendMasterDict(masterDict,dictList)
+        
+        #  check normalisation procedures   important for noise classification,
+        # using random resampling might be good to get a view
+        # implement SLP here for classification
 
 
 
@@ -377,14 +418,13 @@ with open("%s" %(args.fasta), "rU") as fasta_raw, open("%s"%(args.gtf),"r") as g
                     resDict[masDictgene] = {SNPpos: []}
                 else:
                     resDict[masDictgene][SNPpos] = []
-##            print masDictgene, SNPpos, SNPdata
-##                print SNPdata
 
-##            observations = 
             # Check if it is Noise
                 elementcount = 0
 
             # create small dictionary, and unify the p values with Fischers 
+            # Fischers test is insufficient for the question at hand
+            # Try implementing a Single Layer Perceptron
                 for element in SNPdata:
                     NoiseProb = distFunNegBin(100,int(element),0.02)
 

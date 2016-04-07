@@ -556,118 +556,118 @@ def getPercentage(number, total, feature, percList):
     return percList
 
 ### outdated functions
-
-def allpile(sequenceDictionary, genePileup, geneName, start, stop,secondpass):
-    """
-    allpile() takes a target transcript (name and sequence in dictionary form,  position and nucleotide)
-    also takes the samfile pileup from pysam invocation
-    returns a dictionary of the whole coverage of the transcript.
-    """
-    resDict = {}
-    basecount = 1
-    SNPcount = 0
-    x_count = 0
-
-##  can only go once through genePileup 
-    for pileupcolumn in genePileup:
-
-        if pileupcolumn.pos in sequenceDictionary:
-
-            # element is the position on the chromosome
-            element = pileupcolumn.pos
-            key = element
-            
-            # base is the corresponding nucleotide in the reference
-            base = sequenceDictionary[element]
-
-            # implement option to run on the second try, ignore all non masked nucleotides
-            if secondpass == False or base == 'N':
-
-
-                # ?? what ??
-                if pileupcolumn.pos == element:
-        
-                    for pileupread in pileupcolumn.pileups:
-                        
-                        try:
-                            ALT = pileupread.alignment.query_sequence[pileupread.query_position]
-                        except:
-                            # NoneType exception,  in case there is no alignment ? the read becomes 'X'
-##                            ALT = base
-                            ALT = 'X'
-                            x_count +=1
-
-                        if ALT !='X':
-                            basecount +=1
-
-##                print ALT, base
-                        if ALT != base and ALT != 'X':
-##                            basecount +=1
-
-                            if not element in resDict:
-                                resDict[element] = [base,ALT]
-                                SNPcount +=1
-
-                            # Translate PHRED to probability
-                                probability = Phred2prob(int(pileupread.alignment.mapping_quality))
-                                count_occurance = 1
-
-                                resDict[element]=[sequenceDictionary[pileupcolumn.pos],ALT,count_occurance,basecount,probability]
-                            
- 
-
-                # Add more information about the probability            
-                            if element in resDict:          
-
-                            # allow for multiple different SNPs per position
-                                if resDict[element][1] == ALT:
-
-                                    probability = Phred2prob(int(pileupread.alignment.mapping_quality))
-                                
-                                    counting = resDict[element][2]
-                                    counting += 1
-                                    resDict[element][2] = counting
-
-                                    misscallChance = resDict[element][4]
-                                    misscallChance = float(misscallChance) * float(probability)
-                                    resDict[element][4] = misscallChance
-
-                            
-                                if resDict[element][1] != ALT:
-                                    pileupcolumn_alternative= '%s_%s' %(element, ALT)
-                                    if pileupcolumn_alternative in resDict:
-
-                                # Translate PHRED to probability
-                                        probability = Phred2prob(int(pileupread.alignment.mapping_quality))
-                                        
-                                        count_occurance = resDict[pileupcolumn_alternative][2]
-                                        count_occurance += 1
-                                        resDict[pileupcolumn_alternative][2] = count_occurance
-                                        
-                                        misscallChance = resDict[pileupcolumn_alternative][4]
-                                        misscallChance = float(misscallChance) * float(probability)
-##                                        
-                                        
-                                        SNPcount += 1
-                          
-
-                                    if not pileupcolumn_alternative in resDict:
-                                        
-                                        count_occurance = 1
-                                        probability = Phred2prob(int(pileupread.alignment.mapping_quality))
-                                        
-                                        resDict[pileupcolumn_alternative]=[sequenceDictionary[key],pileupread.alignment.query_sequence[pileupread.query_position],count_occurance,basecount,probability]
-                                        SNPcount +=1
-
-                            # Translate PHRED to probability
-                                        probability = Phred2prob(int(pileupread.alignment.mapping_quality))
-
-                        if pileupcolumn.pos in resDict and ALT != 'X':
-                            resDict[element][3] = basecount
-                        
-                            
-        
-    return resDict
+# 
+# def allpile(sequenceDictionary, genePileup, geneName, start, stop,secondpass):
+#     """
+#     allpile() takes a target transcript (name and sequence in dictionary form,  position and nucleotide)
+#     also takes the samfile pileup from pysam invocation
+#     returns a dictionary of the whole coverage of the transcript.
+#     """
+#     resDict = {}
+#     basecount = 1
+#     SNPcount = 0
+#     x_count = 0
+# 
+# ##  can only go once through genePileup 
+#     for pileupcolumn in genePileup:
+# 
+#         if pileupcolumn.pos in sequenceDictionary:
+# 
+#             # element is the position on the chromosome
+#             element = pileupcolumn.pos
+#             key = element
+#             
+#             # base is the corresponding nucleotide in the reference
+#             base = sequenceDictionary[element]
+# 
+#             # implement option to run on the second try, ignore all non masked nucleotides
+#             if secondpass == False or base == 'N':
+# 
+# 
+#                 # ?? what ??
+#                 if pileupcolumn.pos == element:
+#         
+#                     for pileupread in pileupcolumn.pileups:
+#                         
+#                         try:
+#                             ALT = pileupread.alignment.query_sequence[pileupread.query_position]
+#                         except:
+#                             # NoneType exception,  in case there is no alignment ? the read becomes 'X'
+# ##                            ALT = base
+#                             ALT = 'X'
+#                             x_count +=1
+# 
+#                         if ALT !='X':
+#                             basecount +=1
+# 
+# ##                print ALT, base
+#                         if ALT != base and ALT != 'X':
+# ##                            basecount +=1
+# 
+#                             if not element in resDict:
+#                                 resDict[element] = [base,ALT]
+#                                 SNPcount +=1
+# 
+#                             # Translate PHRED to probability
+#                                 probability = Phred2prob(int(pileupread.alignment.mapping_quality))
+#                                 count_occurance = 1
+# 
+#                                 resDict[element]=[sequenceDictionary[pileupcolumn.pos],ALT,count_occurance,basecount,probability]
+#                             
+#  
+# 
+#                 # Add more information about the probability            
+#                             if element in resDict:          
+# 
+#                             # allow for multiple different SNPs per position
+#                                 if resDict[element][1] == ALT:
+# 
+#                                     probability = Phred2prob(int(pileupread.alignment.mapping_quality))
+#                                 
+#                                     counting = resDict[element][2]
+#                                     counting += 1
+#                                     resDict[element][2] = counting
+# 
+#                                     misscallChance = resDict[element][4]
+#                                     misscallChance = float(misscallChance) * float(probability)
+#                                     resDict[element][4] = misscallChance
+# 
+#                             
+#                                 if resDict[element][1] != ALT:
+#                                     pileupcolumn_alternative= '%s_%s' %(element, ALT)
+#                                     if pileupcolumn_alternative in resDict:
+# 
+#                                 # Translate PHRED to probability
+#                                         probability = Phred2prob(int(pileupread.alignment.mapping_quality))
+#                                         
+#                                         count_occurance = resDict[pileupcolumn_alternative][2]
+#                                         count_occurance += 1
+#                                         resDict[pileupcolumn_alternative][2] = count_occurance
+#                                         
+#                                         misscallChance = resDict[pileupcolumn_alternative][4]
+#                                         misscallChance = float(misscallChance) * float(probability)
+# ##                                        
+#                                         
+#                                         SNPcount += 1
+#                           
+# 
+#                                     if not pileupcolumn_alternative in resDict:
+#                                         
+#                                         count_occurance = 1
+#                                         probability = Phred2prob(int(pileupread.alignment.mapping_quality))
+#                                         
+#                                         resDict[pileupcolumn_alternative]=[sequenceDictionary[key],pileupread.alignment.query_sequence[pileupread.query_position],count_occurance,basecount,probability]
+#                                         SNPcount +=1
+# 
+#                             # Translate PHRED to probability
+#                                         probability = Phred2prob(int(pileupread.alignment.mapping_quality))
+# 
+#                         if pileupcolumn.pos in resDict and ALT != 'X':
+#                             resDict[element][3] = basecount
+#                         
+#                             
+#         
+#     return resDict
 
 
 def MaskAFasta (silenceDictionary, fastaDictionary, outHandle):
@@ -847,43 +847,93 @@ def binning(inDict, masterDict):
 
     return masterDict
 
-def extendMasterDict(masterDict,inDict1,inDict2=0,inDict3=0):
+def binningResampling(inDict, masterDict):
     """
-    Filling the master Dictionary with actual values, we take 20 observations, choosen from randomly selected datasets, of which we have up to 3...
-    This should result in a poisson like distribution for the low expressed data, depending on their mean expression
-
-    This function selects one of the replicates, from which the observations are chosen
-    """
-
-
-
-    for fill in range(0,5):
-        if inDict2 !=0 and inDict3 !=0 :
-            chosenOne = random.choice(['inDict1','inDict2','inDict3'])
-        if inDict2 !=0 :
-            chosenOne = random.choice(['inDict1','inDict2'])
-        if inDict2 ==0 and inDict3 ==0:
-            chosenOne = 'inDict1'
-
-        
-           # take value from a random dictionary 
-        if chosenOne == 'inDict3':
-            chosenOne = inDict3
-        if chosenOne == 'inDict2' :
-            chosenOne = inDict2
-        if chosenOne == 'inDict1':
-            chosenOne = inDict1
-            
-##        print len(chosenOne)
-
-            
-        masterDict = binning(chosenOne, masterDict)
-
-
-        
-      
-    return masterDict
+    Appends the SNP count in the individual observations to the MasterDictionary
+    This improves the parametric classification.
     
+    
+    takes an individual dictionary ,
+    populates the emptied master dicionary with observations from 
+    
+    
+    """
+    
+    for gene, SNP in masterDict.items():
+        for Pos, emptyvalue in SNP.items():
+
+
+##            print inDict[gene][Pos]
+            SNPcount = 0
+            if gene in inDict:
+                if Pos in inDict[gene] :
+                
+                    SNPs = int(inDict[gene][Pos][2])
+                    totalCoverage = int(inDict[gene][Pos][3])
+                if Pos not in inDict[gene] :
+                    SNPs = 0
+                    totalCoverage = 100
+                
+            elif gene not in inDict :
+                SNPs = 0
+                totalCoverage = 100
+
+
+                
+            if totalCoverage < 100:
+                totalCoverage = 100
+
+            count = 0
+        # now create bins,  randomly draw from one sample 50 times (of whole coverage) and store how many SNPSs you get
+            for repeat in range(0, 100):
+                choice = random.randrange(0,int(totalCoverage))
+            
+                if choice < SNPs:
+                    count +=1
+
+            masterDict[gene][Pos].append(count)
+##            print inDict[gene][Pos]
+
+    return masterDict
+
+
+# def extendMasterDict(masterDict,inDict1,inDict2=0,inDict3=0):
+#     """
+#     Filling the master Dictionary with actual values, we take 20 observations, choosen from randomly selected datasets, of which we have up to 3...
+#     This should result in a poisson like distribution for the low expressed data, depending on their mean expression
+# 
+#     This function selects one of the replicates, from which the observations are chosen
+#     """
+# 
+# 
+# 
+#     for fill in range(0,5):
+#         if inDict2 !=0 and inDict3 !=0 :
+#             chosenOne = random.choice(['inDict1','inDict2','inDict3'])
+#         if inDict2 !=0 :
+#             chosenOne = random.choice(['inDict1','inDict2'])
+#         if inDict2 ==0 and inDict3 ==0:
+#             chosenOne = 'inDict1'
+# 
+#         
+#            # take value from a random dictionary 
+#         if chosenOne == 'inDict3':
+#             chosenOne = inDict3
+#         if chosenOne == 'inDict2' :
+#             chosenOne = inDict2
+#         if chosenOne == 'inDict1':
+#             chosenOne = inDict1
+#             
+# ##        print len(chosenOne)
+# 
+#             
+#         masterDict = binning(chosenOne, masterDict)
+# 
+# 
+#         
+#       
+#     return masterDict
+#     
 # 
 # def populateMasterDict(inDict1,inDict2=0,inDict3=0):
 #     """
@@ -905,6 +955,26 @@ def extendMasterDict(masterDict,inDict1,inDict2=0,inDict3=0):
 #     
 #     
 #     return masterDict
+
+def extendMasterDictbyResampling(masterDict,ListofDictionaries, repeats ):
+    """
+    Filling the master Dictionary with actual values, 
+    to stabilize the method a resampling approach is benefitial,
+    especially if only one replicate is available
+    
+    the original master dictionary is taken and filled with observations from 
+    randomly drawn samples 
+    
+    """
+    for repeat in range(0,repeats):
+
+        chosenOne = random.choice(ListofDictionaries)
+    
+        masterDict = binning(chosenOne, masterDict)
+    
+    return masterDict
+
+
 
 
 
