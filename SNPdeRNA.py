@@ -41,24 +41,23 @@ import os.path
 ##
 ##    return combined_prob
 
-def findFutureProbabilities(currentProbability, iterations, decrement, direction):
+
+    
+
+def findFutureProbabilities(currentProbability, decrement):
     """
     Support function for Hillclimbing to iteratively find probabilities
     
     """
     
-    if direction == '+':
-        probability = float(currentProbability) + float(decrement)
-    elif direction == '-':
-        probability = float(currentProbability) - float(decrement)
+    probability_up = float(currentProbability) + float(decrement)
+    probability_down = float(currentProbability) - float(decrement)
     
-    
-    return probability
-    
+    return probability_up, probability_down
 
 
 
-def HillClimbing(total, normcount,baseexpectation ):
+def HillClimbing(total, normcount,baseexpectation,stepSize = 0.25 ):
     """
     Function implements simple hillclimbing algorithm to find optimal expectations from input data
     
@@ -72,47 +71,58 @@ def HillClimbing(total, normcount,baseexpectation ):
     up = '+'
     down = '-'
     
-    stepSize = 0.25
+    #stepSize = 0.25
     
     # starting with the expectation that the probability is heterozygous
     # 10 iterations, decreasing Stepsize   should do 
     
     
-    current_prob = pmfNegBin(total,normcount,prob)
-    direction = '+'
-    for iterations in range(1,11):
+    current_prob = pmfNegBin(total,normcount,baseexpectation)
+    print 'first probability = ',current_prob 
+    # give it a default direction
+    direction = up
+    for iterations in range(1,4):
         
         # first step = decide directions:
         
-            
+        
         # decrement should reach all cutoffs within 3 iterations
-        prob = []
-        decrement = stepSize / iterations
-        result = []
+        
+        decrement = (float(stepSize) / float(iterations))
+        #print decrement
         
         # decide to go up or down, give both choices, see what is better:
             
-        upchance = findFutureProbabilities(baseexpectation,iterations,decrement, up)
-        downchance = findFutureProbabilities(baseexpectation,iterations,decrement, down)
+        upExpect, downExpect = findFutureProbabilities(baseexpectation,decrement)
             
-        upprob = pmfNegBin(total,normcount,upchance)
-        downprob = pmfNegBin(total,normcount,downchance)
-            
-        if float(upprob) > float(downprob):
-            direction = '+'
-        elif float(upprob) > float(downprob):
-            direction = '-'
+        upprob = pmfNegBin(total,normcount,upExpect)
+        downprob = pmfNegBin(total,normcount,downExpect)
+
+        print upprob, downprob, upExpect, downExpect, 'current =' ,baseexpectation
+         
+        if float(upprob) > float(current_prob) or float(downprob) > float(current_prob):
+            if float(upprob) > float(downprob):
+                direction = '+'
+                current_prob = upprob
+                baseexpectation = upExpect
+                
+                
+            elif float(upprob) < float(downprob):
+                direction = '-'
+                current_prob = downprob
+                baseexpectation = downExpect
+                
+        
+    return baseexpectation,  current_prob
             
         
 
-        for element in prob:
-            value = pmfNegBin(total,normcount,baseexpectation)
-            result.append(value)
-            
-            
-        prob = findFutureProbabilities
-        futureexpectations =
-
+#         for element in prob:
+#             value = pmfNegBin(total,normcount,baseexpectation)
+#             result.append(value)
+#             
+#             
+        
 
 
 
