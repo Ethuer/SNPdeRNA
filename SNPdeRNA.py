@@ -41,6 +41,111 @@ import os.path
 ##
 ##    return combined_prob
 
+def findFutureProbabilities(currentProbability, iterations, decrement, direction):
+    """
+    Support function for Hillclimbing to iteratively find probabilities
+    
+    """
+    
+    if direction == '+':
+        probability = float(currentProbability) + float(decrement)
+    elif direction == '-':
+        probability = float(currentProbability) - float(decrement)
+    
+    
+    return probability
+    
+
+
+
+def HillClimbing(total, normcount,baseexpectation ):
+    """
+    Function implements simple hillclimbing algorithm to find optimal expectations from input data
+    
+    I could just compute that from the observations,
+    
+    10 iterations cover sufficient detail, starting in the middle, it will converge to an optimum,
+    lack of flexibility of the possible end states means, this acts as a pre clustering . 
+    
+    
+    """
+    up = '+'
+    down = '-'
+    
+    stepSize = 0.25
+    
+    # starting with the expectation that the probability is heterozygous
+    # 10 iterations, decreasing Stepsize   should do 
+    
+    
+    current_prob = pmfNegBin(total,normcount,prob)
+    direction = '+'
+    for iterations in range(1,11):
+        
+        # first step = decide directions:
+        
+            
+        # decrement should reach all cutoffs within 3 iterations
+        prob = []
+        decrement = stepSize / iterations
+        result = []
+        
+        # decide to go up or down, give both choices, see what is better:
+            
+        upchance = findFutureProbabilities(baseexpectation,iterations,decrement, up)
+        downchance = findFutureProbabilities(baseexpectation,iterations,decrement, down)
+            
+        upprob = pmfNegBin(total,normcount,upchance)
+        downprob = pmfNegBin(total,normcount,downchance)
+            
+        if float(upprob) > float(downprob):
+            direction = '+'
+        elif float(upprob) > float(downprob):
+            direction = '-'
+            
+        
+
+        for element in prob:
+            value = pmfNegBin(total,normcount,baseexpectation)
+            result.append(value)
+            
+            
+        prob = findFutureProbabilities
+        futureexpectations =
+
+
+
+
+def ClassifyPreprocess(ListofMeasurements, maxVal):
+    """
+    This function takes the normalized (to percentage on 1-100 scale) input count data and returns the likelyhood of the measurement following a distinct expected population distribution
+    
+    output will go to the SLP for classification
+    
+    input:
+    list of values from measurements of replicates
+    base expectation
+    
+    Here I could run an optimization to see which distribution best explains the occurance,
+    Implement hillclimbing algorythm ?
+    
+    
+    
+    """
+    
+    baseexpect = 0.5
+    
+    for element in ListofMeasurements:
+        HillClimbing(maxVal,ListofMeasurements, baseexpect)
+    
+    
+    
+    
+    
+
+
+
+
 def SLPClassification(ObservList, weightList, Theta):
     """
     simple implementation of linear classification algorithm 
@@ -411,6 +516,10 @@ with open("%s" %(args.fasta), "rU") as fasta_raw, open("%s"%(args.gtf),"r") as g
     if args.spass == 'No' :
      
         masterDictResample = extendMasterDictbyResampling(refDict,dictList, repeats)
+        
+        
+        
+        
         
 #         for element, value in masterDictResample.items():
 #             print element, value

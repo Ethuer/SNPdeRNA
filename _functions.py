@@ -96,7 +96,7 @@ def pmfNegBin(total,observ,prob):
     input
     Total       : total number of measurements
     Observ      : number of observations of bernoulli outcome
-    Prob        : likelyhood for observing an Observ
+    Prob        : Expected likelyhood for observing an Observ
     
     Calculates probability Mass function for the negative binomial distribution
     A parametric approach to validate likelyhood of false claims.
