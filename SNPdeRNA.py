@@ -40,7 +40,35 @@ import os.path
 ##    combined_prob = chisqprob(target,df)
 ##
 ##    return combined_prob
-
+def CalculateDotProduct(Vector1, Vector2):
+    """
+    Calculate the dot product for 2 equal length input vectors
+    
+    input numerical vectors
+    len( Vector 1 ) = len(Vector2)
+    
+    Vector1 derives from sample observations, Vector 2 is a weight vector
+    
+    output dot prodcut
+    
+    """
+    
+    sumVector = []
+    count = 0
+    if len(Vector1) == len(Vector2):
+        
+        for element in Vector1:
+            intermediate = float(element)*float(Vector2[count])
+            sumVector.append(intermediate)
+            
+        
+            count +=1
+    
+    dotprod = sum(sumVector)
+    
+    return dotprod
+    
+    
 
     
 
@@ -175,18 +203,16 @@ def SLPClassification(ObservList, weightList, Theta):
     
     TrueList = []
     count = 0
-    for element in ObservList:
-        
-        element = float(element)*float(weightList[count])
-        TrueList.append(element)
     
-    obserVar = sum(TrueList)
+    
+    dotProduct = CalculateDotProduct(ObservList, weightList)
 
-    if float(obserVar) < float(Theta):
+    if float(dotProduct) < float(Theta):
         Classification = 0
         
-    if float(obserVar) >= float(Theta):
+    if float(dotProduct) >= float(Theta):
         Classification = 1
+        
     return Classification
 
 
@@ -220,6 +246,38 @@ def writeVCFormat(masterDict,outfile,convDict):
             outfile.writerow(outrow)
 
 
+def PopulateWeightdict():
+    """
+    Populate a dictionary to fit the resampled masterDict.
+    this is needed to generate the weight vector for the Noise classification step
+    in the initial SNP detection and validation pipeline.
+    
+    input:
+    masterDictionary
+    repeat of resampling strategy (same as number of columns that will be present in the reference Dictionary
+    
+    output:
+    Dicitonary of Dictionary:  {Genes:{SNPs:Weights}}
+    
+    
+    """
+    
+    
+    for key, value in masterDict.items():
+        
+        for element, content in value.items():
+            
+            if key in weightDict:
+                weightDict[key][element]=[]
+                
+                
+                # replicate the weight vector to match the 
+                # weights of the resampled observations
+                
+                for repeat in range(0,repeats):
+                    weightDict[key][element].append(content[5])
+
+
 
 
 parser = argparse.ArgumentParser(description='Looking for SNPs in RNAseq data. This part accepts SAM or BAM input files, mapped against an available reference. In a first step it counts the occurrances of Polymorphisms against a reference. In second pass mode, only already detected SNPs are being analyzed')
@@ -251,7 +309,6 @@ parser.add_argument('-origin',
                     #type=lambda x: is_valid_file(parser,x)
                     )
 
-
 parser.add_argument('-bam',
                     dest='bam',
                     nargs='+',
@@ -261,24 +318,6 @@ parser.add_argument('-bam',
                     metavar = 'FILE',
                     #type=lambda x: is_valid_file(parser,x)
                     )
-
-# parser.add_argument('-bam2',
-#                     dest='bam2',
-#                     required = False,
-#                     default = 0,
-#                     help='Additional Input of bam file of the Alignment.  Tophat2 output works,  NextGenMapper or STAR.',
-#                     metavar = 'FILE',
-#                     #type=lambda x: is_valid_file(parser,x)
-#                     )
-# 
-# parser.add_argument('-bam3',
-#                     dest='bam3',
-#                     required = False,
-#                     help='Additional Input of bam file of the Alignment.  Tophat2 output works,  NextGenMapper or STAR.',
-#                     metavar = 'FILE',
-#                     #type=lambda x: is_valid_file(parser,x)
-#                     )
-
 
 parser.add_argument('-out',
                     dest='out',
@@ -484,14 +523,13 @@ with open("%s" %(args.fasta), "rU") as fasta_raw, open("%s"%(args.gtf),"r") as g
     
 
     if args.spass == 'No' and args.fastaOut != 'none' :
-        print '[STATUS] Writing masked fasta file '
+        print '[STATUS] Writing masked FASTA reference file '
         print '[STATUS] Please use this as a new reference, to eliminate alignment derived errors'
         
         if args.fasta != 'none':
             with open('%s'%(args.fastaOut),'w') as fasta_raw:
                 record_dict = SeqIO.index('%s' %(args.fasta), "fasta")
                 print '[STATUS] Silencing the fasta sequence'
-                MaskAFasta(silenceDict,record_dict, fasta_raw)
                 print '[STATUS] Masked Fasta generated'
         if args.fasta =='none':
             print '[STATUS] No input FASTA file found, no output fasta created'
@@ -518,17 +556,48 @@ with open("%s" %(args.fasta), "rU") as fasta_raw, open("%s"%(args.gtf),"r") as g
     # create template Master Dictionary
     # current masterDict is a dict of dicts, needs to unravel
    
-        
+    # need to calculate the weight matrix for SNPs according to their occurance
+    
+    
+    # I need a weight dictionary,   derived from occurance across replicates
+    # the interesting part for the weightdict is the occurance per sample
+    
+    
+    weightDict = {}
     
     repeats = 20
     
+    for key, value in masterDict.items():
+        
+        for element, content in value.items():
+            
+            if key in weightDict:
+                weightDict[key][element]=[]
+                
+                
+                # replicate the weight vector to match the 
+                # weights of the resampled observations
+                
+                for repeat in range(0,repeats):
+                    weightDict[key][element].append(content[5])
+                
+            
+            
+            
     
-    if args.spass == 'No' :
-     
-        masterDictResample = extendMasterDictbyResampling(refDict,dictList, repeats)
+#     repeats = 20
+#     
+#     
+#     if args.spass == 'No' :
+#      
+#         masterDictResample = extendMasterDictbyResampling(refDict,dictList, repeats)
+#         
+#         for element, val in masterDictResample.items():
+#             print element, val
+#         
         
-        
-        
+        # run the individual observations into the first perceptron, 
+        # 
         
         
 #         for element, value in masterDictResample.items():
