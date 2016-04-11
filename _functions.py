@@ -8,6 +8,285 @@ from Bio.Alphabet import IUPAC
 import math
 
 
+
+##
+##def FischerCombineP(ListOfP):
+##    """
+##
+##    returns the probability of the combined p-values, according to the Fischer method for combining p values
+##
+##    """
+##    summary = 0
+##    for element in ListOfP:
+##        arg = math.log(element)
+##        arg = -2 * arg
+##        summary = float(summary) + float(arg)
+##
+##    target =  float(summary)
+##    df = len(ListOfP) -1
+##
+##    combined_prob = chisqprob(target,df)
+##
+##    return combined_prob
+def CalculateDotProduct(Vector1, Vector2):
+    """
+    Calculate the dot product for 2 equal length input vectors
+    
+    input numerical vectors
+    len( Vector 1 ) = len(Vector2)
+    
+    Vector1 derives from sample observations, Vector 2 is a weight vector
+    
+    output dot prodcut
+    
+    """
+    
+    sumVector = []
+    count = 0
+    if len(Vector1) == len(Vector2):
+        
+        for element in Vector1:
+            intermediate = float(element)*float(Vector2[count])
+            sumVector.append(intermediate)
+            
+        
+            count +=1
+    
+    dotprod = sum(sumVector)
+    
+    return dotprod
+    
+    
+
+    
+
+def findFutureProbabilities(currentProbability, decrement):
+    """
+    Support function for Hillclimbing to iteratively find probabilities
+    
+    """
+    
+    probability_up = float(currentProbability) + float(decrement)
+    probability_down = float(currentProbability) - float(decrement)
+    
+    return probability_up, probability_down
+
+
+
+def HillClimbing(total, normcount,baseexpectation,stepSize = 0.25 ):
+    """
+    Function implements simple hillclimbing algorithm to find optimal expectations from input data
+    
+    I could just compute that from the observations,
+    
+    10 iterations cover sufficient detail, starting in the middle, it will converge to an optimum,
+    lack of flexibility of the possible end states means, this acts as a pre clustering . 
+    
+    
+    """
+    up = '+'
+    down = '-'
+    
+    #stepSize = 0.25
+    
+    # starting with the expectation that the probability is heterozygous
+    # 10 iterations, decreasing Stepsize   should do 
+    
+    
+    current_prob = pmfNegBin(total,normcount,baseexpectation)
+    print 'first probability = ',current_prob 
+    # give it a default direction
+    direction = up
+    for iterations in range(1,4):
+        
+        # first step = decide directions:
+        
+        
+        # decrement should reach all cutoffs within 3 iterations
+        
+        decrement = (float(stepSize) / float(iterations))
+        #print decrement
+        
+        # decide to go up or down, give both choices, see what is better:
+            
+        upExpect, downExpect = findFutureProbabilities(baseexpectation,decrement)
+            
+        upprob = pmfNegBin(total,normcount,upExpect)
+        downprob = pmfNegBin(total,normcount,downExpect)
+
+        
+         
+        if float(upprob) > float(current_prob) or float(downprob) > float(current_prob):
+            if float(upprob) > float(downprob):
+                direction = '+'
+                current_prob = upprob
+                baseexpectation = upExpect
+                
+                
+            elif float(upprob) < float(downprob):
+                direction = '-'
+                current_prob = downprob
+                baseexpectation = downExpect
+                
+        
+    return baseexpectation,  current_prob
+            
+        
+
+#         for element in prob:
+#             value = pmfNegBin(total,normcount,baseexpectation)
+#             result.append(value)
+#             
+#             
+        
+
+
+
+def ClassifyPreprocess(ListofMeasurements, maxVal):
+    """
+    This function takes the normalized (to percentage on 1-100 scale) input count data and returns the likelyhood of the measurement following a distinct expected population distribution
+    
+    output will go to the SLP for classification
+    
+    input:
+    list of values from measurements of replicates
+    base expectation
+    
+    Here I could run an optimization to see which distribution best explains the occurance,
+    Implement hillclimbing algorythm ?
+    
+    
+    
+    """
+    
+    baseexpect = 0.5
+    
+    for element in ListofMeasurements:
+        HillClimbing(maxVal,ListofMeasurements, baseexpect)
+    
+    
+    
+    
+    
+
+
+
+
+def SLPClassification(ObservList, weightList, Theta):
+    """
+    simple implementation of linear classification algorithm 
+    It's a simple formula that only permits linear classification, 
+    In the case of noise or occurence, only one dimensional data is available.
+    
+    observList is a list of observations,  in this case most likely probabilities from a negative binomial distribution
+    
+    weightList refers to a list of weights applied to the observations.
+    Theta is the threshold level, this has to be kept as a global variable to keep it dynamic
+    
+    TrueList is the weight corrected observationList
+    
+    Returns the Classification variable  Yes (1) or No (0)
+    
+    """
+    
+    TrueList = []
+    count = 0
+    
+    
+    dotProduct = CalculateDotProduct(ObservList, weightList)
+
+    if float(dotProduct) < float(Theta):
+        Classification = 0
+        
+    if float(dotProduct) >= float(Theta):
+        Classification = 1
+        
+    return Classification
+
+
+# add the SAM2SNP first, move as much as possible to _functions
+
+def writeVCFormat(masterDict,outfile,convDict):
+    
+    """
+    Simple output for vcf like format based on cvs reader / writer functions
+    
+    input is the original masterDictionary,
+    an outfile handler to write into 
+    and a conversion dictionary, this contains the conversion between gene names, and the chromosomes they are on 
+    
+    """
+    #write Header
+
+    for gene, SNPs in masterDict.items():
+        CHROM = convDict[gene]
+
+        for SNP, info in SNPs.items():
+            POS = SNP
+            ID = '%s_%i' %(gene,int(POS))
+            REF = info[0]
+            ALT = info[1]
+            QUAL = 30
+            Filter = '.'
+            INFO = 'NS=%s;DP=%s' %(info[5],info[2])
+            
+            outrow = []
+            for elmnt in CHROM,POS,ID,REF,ALT,QUAL,Filter,INFO:
+                
+                # elmnt = elmnt.replace('"','')
+                outrow.append(elmnt)
+        
+            outfile.writerow(outrow)
+
+
+def StaticWeightList( repeats, weight):
+    """
+    small support function for the weightlistcreation
+    populates the SNPs with a weight vector of lenght repeat
+    matches the reference Dictionary column line
+    """
+    
+    weightListing = []
+    
+    for repeat in range(0,repeats):
+        weightListing.append(weight)
+    
+    return weightListing
+
+
+def PopulateWeightdict(masterDict,repeats):
+    """
+    Populate a dictionary to fit the resampled masterDict.
+    this is needed to generate the weight vector for the Noise classification step
+    in the initial SNP detection and validation pipeline.
+    
+    input:
+    masterDictionary
+    repeat of resampling strategy (same as number of columns that will be present in the reference Dictionary
+    
+    output:
+    Dicitonary of Dictionary:  {Genes:{SNPs:Weights}}
+    
+    
+    """
+    weightDict = {}
+    
+    for key, value in masterDict.items():
+        
+        for element, content in value.items():
+            
+            if key in weightDict:
+                weightDict[key][element]= StaticWeightList( repeats, content[5])
+            
+            if not key in weightDict:
+                
+                SNPWeightList = StaticWeightList( repeats, content[5])
+                weightDict[key]={element:SNPWeightList}
+                
+    return weightDict
+
+
+
 def fullSNPdetect(subDictionary,probability = 0.98):
     """
 Check if SNP is on both alleles,
