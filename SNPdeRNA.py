@@ -9,9 +9,31 @@ import re
 import csv
 import sys,argparse
 import os.path
+import random
+
+def SampleToLikelyhood(masterDictResample, Expect):
+    """
+    takes the resampled dictionary and applies the distFunNegBin function on each entry
+    """
+    outDict = {} 
+    for gene, SNPs in masterDictResample.items():
+        if gene not in outDict:
+            outDict[gene] = {}
+            
+        for SNP, resampledExpression in SNPs.items():
+            if SNP not in outDict[gene]:
+                outDict[gene][SNP]= []
+                
+            for element in resampledExpression:
+                
+                # 100 is the resampling maximum
+                outDict[gene][SNP].append(distFunNegBin(100,element,Expect))
+                
+    
+    return outDict
 
 
-def MinimumVarianceUnbiasedEstimator(posObservations, negObservations):
+def MinimumVarianceUnbiasedEstimator(posObservations, total):
     """
     This would technically require a lot more replicates than will be available,
     but it's the best available option
@@ -21,30 +43,79 @@ def MinimumVarianceUnbiasedEstimator(posObservations, negObservations):
     negative observations
     
     returns
-    likelyhood for obtaining this observation
+    likelyhood for obtaining this observation 
     
     """
     reducedPosObs = (int(posObservations)-1)
 
-    MVUE = float(reducedPosObs)/(float(reducedPosObs)+float(negObservations))
+    MVUE = float(reducedPosObs)/(float(total)-1.0)
 
     return MVUE
 
 
+def getRandomVariances(inDict):
+    """
+    Helper function for Calculate K Value,
+    reduces indentation,  increases maintainability
+    
+    input 
+    inDict, from the SAMimport function, 
+    contains  pileup information
+    
+    """
+    outList =[]
+    
+   
+    
+    for gene, SNPdict in inDict.items():
+        for POS, values in SNPdict.items():
+            choice = random.randrange(10)
+            if choice == 5:
+                
+                mvue_pval = MinimumVarianceUnbiasedEstimator(values[2],values[3])
+                variance = varNegBin(values[2],mvue_pval)
+                stdev = math.sqrt(variance)
+                outList.append(stdev)
+                    
+                # load it into the subset
+                
+    return outList
 
 
-def CalculateKValue(dictList):
+def CalculateDValue(dictList, mode):
     """
     Calculate KValue,  
-    find the Median of the variance of negative binomial distributions modeled after the average measurements if available...
+    find the Mean of the standard deviation of negative binomial distributions modeled after the average measurements if available...
     
-    this derives from the variance of the NegBinDist ,  p values have to be estimated by minimum variance unbiased Estimator
+    this derives from the standard deviation of the NegBinDist ,  p values have to be estimated by minimum variance unbiased Estimator
     
     # first attemt is creating from random samples of the inDicts ( 10% ),  using the average distributions over replicates
     # second try may be to create different variances for highly expressed lowly expressed regions, or a normalizer over expression.
     
     """
+    if mode == 1:
+        count = 0
     
+    # output needs to be a list of 
+    
+        for element in dictList:
+            # only for the first dictionary,  it is random anyways
+            if count == 0:
+                ListOfVariance = getRandomVariances(element)
+                print len(ListOfVariance)
+                
+                dval = (sum(ListOfVariance)/len(ListOfVariance))
+                        
+                count +=1
+        
+    return dval
+        # calculation uses random subset of input to derive variance
+            
+            
+            
+            # check if SNP is in all replicates
+            # calculate pMVUE
+            
     
     
     
@@ -80,7 +151,7 @@ def CalculateTheta(d_value, k_value, x_value ):
     Y_value = (float(k_value)*float(x_value)) + float(d_value)
     
     
-    return y_value
+    return Y_value
     
     
 
@@ -370,16 +441,16 @@ with open("%s" %(args.fasta), "rU") as fasta_raw, open("%s"%(args.gtf),"r") as g
     # K_value calculator 
     # needs to be done in ways,  ifno replicates are given, noise is estimated from the behaviour of True negatives, that don't meet the min threshold.
     # if replicates are available, the error is derived from the variances of the distribution defined by the observations
-    if len(dictList) > 1:
+    
         # find Variance in inDict observations
     
-    elif len(dictList) == 1:
+    
         # find Variance in minThreshold observations
         # alternativ model variance on parametric negBinDist 
         
     
     
-    repeats = 20
+    repeats = 10
     
     weightDictionary = PopulateWeightdict(masterDict,repeats)
 #             
@@ -391,36 +462,57 @@ with open("%s" %(args.fasta), "rU") as fasta_raw, open("%s"%(args.gtf),"r") as g
 #                 print masterDict[key][val]
 #             
 #     
-    repeats = 20
+    
     
     # theta is the issue  
     
-    k_val = 0.02
-    d_val = 10
-    x_val = 
-    Theta = CalculateTheta(d_val, k_val, x_val ):
-    print Theta
+    # d should be a minimum cutoff derived from the standard deviation of the data according to negbin distribution
+    d_val = CalculateDValue(dictList, 1)
+    #k_val = 0.02
+    
+    # k_value is a preset,  modifies cost of false positive by changing the cutoff
+    k_val = 1
+    
+    
+    # xval is the minimum expected likelyhood, this is multiplied by the cost for false positive
+    x_val = 1
+    
+    
+    Theta = CalculateTheta(d_val,k_val,x_val)
+    
     
     # implement linear function for computing theta from the expected error...
     # y = kx + d    
     # i need a robust way of measuring the error in data
     # d can be the expected error k should be
+
+    
     
     if args.spass == 'No' :
-      
-        masterDictResample = extendMasterDictbyResampling(refDict,dictList, repeats)     
-         
-        for key, value in masterDictResample.items():
+       
+        masterDictResample = extendMasterDictbyResampling(refDict,dictList, repeats)    
+        
+        # for the first perceptron Expectation is 0.1 
+        masterDictPerc1 = SampleToLikelyhood(masterDictResample, 0.1 )
+        
+        
+        
+        # calculate more useful information than just count,  lets add up the probabiliy function for > 1 %
+        
+        
+        
+        
+        for key, value in masterDictPerc1.items():
             for POS, val in value.items():
-                
-                
-                
+                #print key, POS, val
+                echo = SLPClassification(val, weightDictionary[key][POS], Theta)
+                print echo
                 #print key,POS, val
                 #print key,POS, weightDictionary[key][POS]
                 
                 #echo = CalculateDotProduct(val, weightDictionary[key][POS])
                 
-                echo = SLPClassification(val, weightDictionary[key][POS], Theta)
+                
                 #print echo
         # run the individual observations into the first perceptron, 
         # 

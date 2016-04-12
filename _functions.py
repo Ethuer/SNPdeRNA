@@ -94,7 +94,7 @@ def HillClimbing(total, normcount,baseexpectation,stepSize = 0.25 ):
     
     
     current_prob = pmfNegBin(total,normcount,baseexpectation)
-    print 'first probability = ',current_prob 
+    #print 'first probability = ',current_prob 
     # give it a default direction
     direction = up
     for iterations in range(1,4):
@@ -415,6 +415,15 @@ def distFunNegBin(total,observ,prob):
     """
     extend the pmf function into a distribution function
     adding a sum over all failures
+    
+    input:
+    total counts
+    positive counts
+    expected probability
+    
+    returns:
+    distribution function probability 
+    
     """
     failures = (total - observ)
     failures = int(failures)
