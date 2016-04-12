@@ -287,14 +287,6 @@ def PopulateWeightdict(masterDict,repeats):
 
 
 
-def fullSNPdetect(subDictionary,probability = 0.98):
-    """
-Check if SNP is on both alleles,
-
-a reverse version of the significance test from earlier
-    """
-    
-
 
 def likelihoodTest(subDictionary, masterDictionary, probability = 0.98, minCoverage = 100):
     """
@@ -360,11 +352,15 @@ def likelihoodTest(subDictionary, masterDictionary, probability = 0.98, minCover
 ##                        synonym = 'Unknown'
 ##
 ##    return 
-def varNegBin(r,p):
+def varNegBin(oserv_success,prob):
     """
     get the variance of the Negative Binomial Distribution 
+    
+    oserv_success = observed successes
+    prob = probability of success
+    
     """
-    variance = (r*(1-p))/(p*p)
+    variance = (oserv_success*(1-prob))/(prob*prob)
     return variance
 
 
@@ -783,13 +779,13 @@ Just compare reference,  most likely SNP and probability that this is at least h
 ####    prob_2 = stats.binom_test( inDict[second],allcount, p=0.01)
 
     
-        prob = distFunNegBin(allcount,inDict[most_likely],0.014)
-        prob2 = distFunNegBin(allcount,inDict[second],0.014)
+        prob = distFunNegBin(allcount,inDict[most_likely],ErrorExpect)
+        prob2 = distFunNegBin(allcount,inDict[second],ErrorExpect)
 
         if prob < probabilityCutoff and most_likely != 'basecount':
             snpDict[most_likely]=[inDict[most_likely],allcount,prob]
         if prob2 < probabilityCutoff and second != 'basecount':
-        # an alternative second choice, in case both alleles mutated away from the reference,  or the organism is
+        # an alternative second choice, in case both alleles mutated away from the reference,  or the organism is polyploid
             snpDict[second] = [inDict[second],allcount,prob2]
 
 ####    

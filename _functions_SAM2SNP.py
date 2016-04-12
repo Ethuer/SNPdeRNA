@@ -13,7 +13,7 @@ import re
 import csv
 
 
-def SAM2SNP(feature,fasta_raw,samfile,gffDict,outfile,cutoff ,spass,errortolerance = 0.12, verbose = True, createIntermediate = False):
+def SAM2SNP(feature,fasta_raw,samfile,gffDict,outfile,cutoff ,spass,errortolerance = 0.014, verbose = True, createIntermediate = False):
         """
 
     wrapper function for coverage analysis of SAM files,
@@ -107,6 +107,7 @@ def SAM2SNP(feature,fasta_raw,samfile,gffDict,outfile,cutoff ,spass,errortoleran
 ##                        print  SNPindividual, SNPindivdata
                         # this fun returns a dictionary of the possible SNPs with given likelihood and coverage
                         # give a hightened minimum threshold for noise clearance
+                        
                         SNPdata = classifydict(SNPindivdata,errortolerance, 0.05,100)
                          
                         for possibleSNP, possibleContent in SNPdata.items():

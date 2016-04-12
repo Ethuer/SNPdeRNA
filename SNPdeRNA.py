@@ -1,7 +1,3 @@
-import csv
-import sys,argparse
-import os.path
-import os
 from _functions import *
 from _functions_SAM2SNP import SAM2SNP
 import pysam
@@ -13,6 +9,81 @@ import re
 import csv
 import sys,argparse
 import os.path
+
+
+def MinimumVarianceUnbiasedEstimator(posObservations, negObservations):
+    """
+    This would technically require a lot more replicates than will be available,
+    but it's the best available option
+    
+    input 
+    positiv observations
+    negative observations
+    
+    returns
+    likelyhood for obtaining this observation
+    
+    """
+    reducedPosObs = (int(posObservations)-1)
+
+    MVUE = float(reducedPosObs)/(float(reducedPosObs)+float(negObservations))
+
+    return MVUE
+
+
+
+
+def CalculateKValue(dictList):
+    """
+    Calculate KValue,  
+    find the Median of the variance of negative binomial distributions modeled after the average measurements if available...
+    
+    this derives from the variance of the NegBinDist ,  p values have to be estimated by minimum variance unbiased Estimator
+    
+    # first attemt is creating from random samples of the inDicts ( 10% ),  using the average distributions over replicates
+    # second try may be to create different variances for highly expressed lowly expressed regions, or a normalizer over expression.
+    
+    """
+    
+    
+    
+    
+    
+    
+    
+
+
+def CalculateTheta(d_value, k_value, x_value ):
+    """
+    Calculate the threshold for perceptrons
+    Assuming a linear threshold y = kx + d
+    where 
+    k is the base error computed from observation of noise behaviour, 
+    
+    d is a minimum tolerance for the probability function ( only needs the lower confidence interval
+    d, for practicality, is derived from the Cost of False positives
+    
+    x is the requested probability function
+    
+    This should be called from within the perceptrons after the extend of coverage is known
+    
+    input: 
+    the static expected error derived from the noisiness of the data.
+    
+    and the perceptron specific  
+    
+    """
+    
+    # temporary d, Error  should be 2 percent of reads 
+    # k, temporary   10   a false positive is worse than a false negative 
+    
+    Y_value = (float(k_value)*float(x_value)) + float(d_value)
+    
+    
+    return y_value
+    
+    
+
 
 parser = argparse.ArgumentParser(description='Looking for SNPs in RNAseq data. This part accepts SAM or BAM input files, mapped against an available reference. In a first step it counts the occurrences of Polymorphisms against a reference. In second pass mode, only already detected SNPs are being analyzed')
 
@@ -296,7 +367,16 @@ with open("%s" %(args.fasta), "rU") as fasta_raw, open("%s"%(args.gtf),"r") as g
     # I need a weight dictionary,   derived from occurance across replicates
     # the interesting part for the weightdict is the occurance per sample
     
+    # K_value calculator 
+    # needs to be done in ways,  ifno replicates are given, noise is estimated from the behaviour of True negatives, that don't meet the min threshold.
+    # if replicates are available, the error is derived from the variances of the distribution defined by the observations
+    if len(dictList) > 1:
+        # find Variance in inDict observations
     
+    elif len(dictList) == 1:
+        # find Variance in minThreshold observations
+        # alternativ model variance on parametric negBinDist 
+        
     
     
     repeats = 20
@@ -313,18 +393,27 @@ with open("%s" %(args.fasta), "rU") as fasta_raw, open("%s"%(args.gtf),"r") as g
 #     
     repeats = 20
     
-    Theta = 1000
-     
+    # theta is the issue  
+    
+    k_val = 0.02
+    d_val = 10
+    x_val = 
+    Theta = CalculateTheta(d_val, k_val, x_val ):
+    print Theta
+    
+    # implement linear function for computing theta from the expected error...
+    # y = kx + d    
+    # i need a robust way of measuring the error in data
+    # d can be the expected error k should be
+    
     if args.spass == 'No' :
       
-        masterDictResample = extendMasterDictbyResampling(refDict,dictList, repeats)
-         
-         
-         
-         
+        masterDictResample = extendMasterDictbyResampling(refDict,dictList, repeats)     
          
         for key, value in masterDictResample.items():
             for POS, val in value.items():
+                
+                
                 
                 #print key,POS, val
                 #print key,POS, weightDictionary[key][POS]
@@ -332,7 +421,7 @@ with open("%s" %(args.fasta), "rU") as fasta_raw, open("%s"%(args.gtf),"r") as g
                 #echo = CalculateDotProduct(val, weightDictionary[key][POS])
                 
                 echo = SLPClassification(val, weightDictionary[key][POS], Theta)
-                print echo
+                #print echo
         # run the individual observations into the first perceptron, 
         # 
         
