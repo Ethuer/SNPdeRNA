@@ -7,7 +7,177 @@ import random
 from Bio.Alphabet import IUPAC
 import math
 
+def SampleToRatio(masterDictResample):
+    """
+    takes the resampled dictionary and extracts the ratio of observations to max total
+    Used in the first perceptron to classify noise by testing the ration against a floating Threshold
+    
+    
+    input:
+    The resampled Master dictionary  normalized to a count of 100
+    
+    output is a dictionary of euqal dimensions containint ratios
+    
+    """
+    outDict = {} 
+    for gene, SNPs in masterDictResample.items():
+        if gene not in outDict:
+            outDict[gene] = {}
+            
+        for SNP, resampledExpression in SNPs.items():
+            if SNP not in outDict[gene]:
+                outDict[gene][SNP]= []
+                
+            for element in resampledExpression:
+                
+                # 100 is the resampling maximum
+                ratio = float(element)/100
+                outDict[gene][SNP].append(ratio)
+                
+    
+    return outDict
 
+
+def SampleToLikelyhood(masterDictResample, Expect):
+    """
+    takes the resampled dictionary and applies the distFunNegBin function on each entry
+    """
+    outDict = {} 
+    for gene, SNPs in masterDictResample.items():
+        if gene not in outDict:
+            outDict[gene] = {}
+            
+        for SNP, resampledExpression in SNPs.items():
+            if SNP not in outDict[gene]:
+                outDict[gene][SNP]= []
+                
+            for element in resampledExpression:
+                
+                # 100 is the resampling maximum
+                outDict[gene][SNP].append(distFunNegBin(100,element,Expect))
+                
+    
+    return outDict
+
+def MinimumVarianceUnbiasedEstimator(posObservations, total):
+    """
+    This would technically require a lot more replicates than will be available,
+    but it's the best available option
+    
+    input 
+    positiv observations
+    negative observations
+    
+    returns
+    likelyhood for obtaining this observation 
+    
+    """
+    reducedPosObs = (int(posObservations)-1)
+
+    MVUE = float(reducedPosObs)/(float(total)-1.0)
+
+    return MVUE
+
+
+def getRandomVariances(inDict):
+    """
+    Helper function for Calculate K Value,
+    reduces indentation,  increases maintainability
+    
+    input 
+    inDict, from the SAMimport function, 
+    contains  pileup information
+    
+    """
+    outList =[]
+    
+   
+    
+    for gene, SNPdict in inDict.items():
+        for POS, values in SNPdict.items():
+            choice = random.randrange(10)
+            if choice == 5:
+                
+                mvue_pval = MinimumVarianceUnbiasedEstimator(values[2],values[3])
+                variance = varNegBin(values[2],mvue_pval)
+                stdev = math.sqrt(variance)
+                outList.append(stdev)
+                    
+                # load it into the subset
+                
+    return outList
+
+
+def CalculateDValue(dictList, mode):
+    """
+    Calculate KValue,  
+    find the Mean of the standard deviation of negative binomial distributions modeled after the average measurements if available...
+    
+    this derives from the standard deviation of the NegBinDist ,  p values have to be estimated by minimum variance unbiased Estimator
+    
+    # first attemt is creating from random samples of the inDicts ( 10% ),  using the average distributions over replicates
+    # second try may be to create different variances for highly expressed lowly expressed regions, or a normalizer over expression.
+    
+    """
+    if mode == 1:
+        count = 0
+    
+    # output needs to be a list of 
+    
+        for element in dictList:
+            # only for the first dictionary,  it is random anyways
+            if count == 0:
+                ListOfVariance = getRandomVariances(element)
+                print len(ListOfVariance)
+                
+                dval = (sum(ListOfVariance)/len(ListOfVariance))
+                        
+                count +=1
+        
+    return dval
+        # calculation uses random subset of input to derive variance
+            
+            
+            
+            # check if SNP is in all replicates
+            # calculate pMVUE
+            
+    
+    
+    
+    
+    
+    
+
+
+def CalculateTheta(d_value, k_value, x_value ):
+    """
+    Calculate the threshold for perceptrons
+    Assuming a linear threshold y = kx + d
+    where 
+    k is the base error computed from observation of noise behaviour, 
+    
+    d is a minimum tolerance for the probability function ( only needs the lower confidence interval
+    d, for practicality, is derived from the Cost of False positives
+    
+    x is the requested probability function
+    
+    This should be called from within the perceptrons after the extend of coverage is known
+    
+    input: 
+    the static expected error derived from the noisiness of the data.
+    
+    and the perceptron specific  
+    
+    """
+    
+    # temporary d, Error  should be 2 percent of reads 
+    # k, temporary   10   a false positive is worse than a false negative 
+    
+    Y_value = (float(k_value)*float(x_value)) + float(d_value)
+    
+    
+    return Y_value
 
 ##
 ##def FischerCombineP(ListOfP):
